@@ -1,0 +1,2402 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hỗ Trợ Học Tập Online - Sáng tác: HAK</title>
+  
+  <!-- Thư viện Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- Thư viện Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --accent-primary: #6366f1; 
+      --topbar-bg: rgba(15, 23, 42, 0.95); 
+      --bg-workspace: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.85);
+      --clock-color: #38bdf8; 
+      --btn-primary-bg: #6366f1; 
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --input-bg: rgba(15, 23, 42, 0.75);
+      --font-family: 'Inter', sans-serif;
+    }
+    * { box-sizing: border-box; font-family: var(--font-family); margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
+    body { 
+      background-color: var(--bg-workspace); 
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      color: var(--text-main); 
+      height: 100vh; 
+      overflow: hidden; 
+      display: flex; 
+      flex-direction: column;
+      padding: 0;
+    }
+
+    /* Hiệu ứng khung mờ trong suốt khi bật hình nền tùy chỉnh */
+    body.has-custom-bg .glass-panel,
+    body.has-custom-bg .app-header,
+    body.has-custom-bg .card-box,
+    body.has-custom-bg .mobile-bottom-nav,
+    body.has-custom-bg .chat-main,
+    body.has-custom-bg #subPaneDocs {
+      background: rgba(15, 23, 42, 0.35) !important;
+      backdrop-filter: blur(10px) !important;
+      -webkit-backdrop-filter: blur(10px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+
+    #appFrameWrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      border: 0px solid transparent;
+      box-shadow: inset 0 0 0 0 transparent;
+      transition: all 0.3s ease;
+    }
+    
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(150,150,150,0.3); border-radius: 10px; }
+
+    input, select, textarea, button { 
+      font-family: var(--font-family); 
+      outline: none; 
+      border-radius: 10px; 
+      border: 1px solid rgba(150,150,150,0.2); 
+      background: var(--input-bg); 
+      color: var(--text-main); 
+      transition: all 0.2s; 
+      pointer-events: auto !important;
+      user-select: text !important;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3); }
+    button { cursor: pointer; }
+
+    .btn-primary { background: var(--accent-primary); color: #fff; border: none; font-weight: bold; padding: 8px 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border-radius: 10px; font-size: 0.8rem; }
+    .btn-primary:hover { opacity: 0.9; }
+    .top-btn { background: rgba(150, 150, 150, 0.12); color: var(--text-main); padding: 6px 10px; font-size: 0.72rem; font-weight: 600; border-radius: 8px; border: 1px solid rgba(150,150,150,0.15); white-space: nowrap; flex-shrink: 0; }
+
+    .glass-panel { background: var(--card-bg); backdrop-filter: blur(14px); border-radius: 14px; border: 1px solid rgba(150,150,150,0.15); padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 99999999; justify-content: center; align-items: center; padding: 12px; pointer-events: auto; }
+    .card-box { padding: 1.2rem; width: 100%; max-width: 440px; text-align: center; max-height: 90vh; overflow-y: auto; background: var(--card-bg); color: var(--text-main); border-radius: 16px; border: 1px solid rgba(150,150,150,0.2); }
+    .card-box.large { max-width: 780px; }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(150,150,150,0.15); padding-bottom: 6px; }
+    .modal-header-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; font-weight: bold; }
+
+    #loginScreen { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; z-index: 9000; background: var(--bg-workspace); padding: 15px; }
+    #mainWorkspace { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; position: relative; }
+
+    .app-header { background: var(--topbar-bg); backdrop-filter: blur(12px); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(150,150,150,0.15); z-index: 100; gap: 6px; }
+    .app-title { font-size: 0.9rem; font-weight: 800; color: var(--clock-color); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    
+    .google-tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.1); padding: 3px; border-radius: 10px; }
+    .g-tab { padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; color: var(--text-sub); background: transparent; border: none; cursor: pointer; }
+    .g-tab.active { background: var(--accent-primary); color: #fff; }
+
+    .mobile-bottom-nav { 
+      display: none; 
+      position: absolute; 
+      bottom: 0; 
+      left: 0; 
+      right: 0;
+      width: 100%; 
+      background: var(--topbar-bg); 
+      backdrop-filter: blur(16px); 
+      border-top: 1px solid rgba(150,150,150,0.2); 
+      z-index: 1000; 
+      grid-template-columns: repeat(4, 1fr); 
+      padding: 8px 2px; 
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+    }
+    .m-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.65rem; color: var(--text-sub); background: none; border: none; cursor: pointer; font-weight: 600; }
+    .m-tab span:first-child { font-size: 1.1rem; }
+    .m-tab.active { color: var(--clock-color); font-weight: bold; }
+
+    .tab-content-area { flex: 1; overflow: hidden; position: relative; display: flex; }
+    .tab-pane { position: absolute; inset: 0; display: none; padding: 10px; overflow-y: auto; flex-direction: column; gap: 10px; }
+    .tab-pane.active { display: flex; }
+
+    .subject-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 4px 0; }
+    .subject-btn { padding: 6px 2px; font-size: 0.75rem; font-weight: bold; border-radius: 8px; white-space: nowrap; }
+    .subject-btn.active { background: var(--accent-primary); color: #fff; }
+
+    .timer-badge { font-size: clamp(2.5rem, 7vw, 4.5rem); font-weight: 800; color: var(--clock-color); font-family: monospace; letter-spacing: 2px; text-shadow: 0 0 15px rgba(0,0,0,0.2); text-align: center; }
+    
+    .chat-container { display: flex; flex-direction: column; height: 100%; gap: 6px; overflow: hidden; flex: 1; }
+    .chat-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(0,0,0,0.05); border-radius: 10px; border: 1px solid rgba(150,150,150,0.15); }
+    .chat-messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; scroll-behavior: smooth; }
+    
+    .chat-msg { margin-bottom: 8px; display: flex; gap: 4px; align-items: flex-start; }
+    .chat-msg.me { flex-direction: row-reverse; }
+    .chat-content-wrap { display: flex; flex-direction: column; max-width: 85%; }
+    .chat-msg.me .chat-content-wrap { align-items: flex-end; }
+    .chat-info { font-size: 0.6rem; color: var(--text-sub); margin-bottom: 2px; }
+    .chat-bubble { padding: 8px 12px; border-radius: 12px; font-size: 0.8rem; word-wrap: break-word; line-height: 1.4; white-space: pre-wrap; }
+    .chat-msg.me .chat-bubble { background: var(--accent-primary); color: #fff; }
+    .chat-msg.other .chat-bubble { background: rgba(150,150,150,0.15); color: var(--text-main); }
+    .chat-msg.ai .chat-bubble { background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: var(--text-main); }
+
+    .formula-card { background: rgba(0,0,0,0.08); border: 1px solid rgba(150,150,150,0.15); border-radius: 8px; padding: 8px; margin-bottom: 6px; text-align: left; }
+    .badge-subj { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; background: var(--accent-primary); color: #fff; margin-bottom: 4px; }
+
+    .volume-slider { width: 100%; height: 6px; accent-color: var(--clock-color); cursor: pointer; }
+
+    .sub-tab-btn { padding: 6px 12px; font-size: 0.75rem; font-weight: 600; border-radius: 8px; border: 1px solid rgba(150,150,150,0.2); background: rgba(0,0,0,0.1); color: var(--text-sub); cursor: pointer; }
+    .sub-tab-btn.active { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+
+    .game-grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .game-card-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(250,250,250,0.2); padding: 8px; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .game-card-btn:hover { background: rgba(99, 102, 241, 0.25); border-color: var(--accent-primary); }
+    .quiz-option-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; text-align: left; color: #fff; font-size: 0.8rem; width: 100%; margin-bottom: 6px; cursor: pointer; }
+    .quiz-option-btn:hover { background: rgba(56, 189, 248, 0.2); border-color: var(--clock-color); }
+    
+    .flashcard { background: rgba(0,0,0,0.3); border: 2px solid var(--accent-primary); border-radius: 14px; padding: 20px; text-align: center; min-height: 160px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.3s; margin-bottom: 12px; position: relative; }
+    .flashcard:active { transform: scale(0.98); }
+
+    .match-btn { padding: 10px; border-radius: 8px; font-size: 0.75rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; text-align: center; min-height: 50px; display: flex; align-items: center; justify-content: center; word-break: break-word; }
+    .match-btn.selected { border-color: #f59e0b; background: rgba(245, 158, 11, 0.3); }
+    .match-btn.correct { border-color: #10b981; background: rgba(16, 185, 129, 0.4); pointer-events: none; opacity: 0.5; }
+
+    .scramble-chip { display: inline-block; padding: 6px 12px; background: rgba(56, 189, 248, 0.2); border: 1px solid var(--clock-color); border-radius: 8px; margin: 3px; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
+    .scramble-chip.used { opacity: 0.3; pointer-events: none; }
+
+    .mobile-author-bar { display: none; }
+
+    @media (max-width: 768px) {
+      .google-tabs { display: none !important; }
+      .header-brand-info { display: none !important; }
+      .mobile-bottom-nav { display: grid !important; }
+      .tab-content-area { padding-bottom: 65px; }
+      .grid-desktop-tintuc { display: flex; flex-direction: column; }
+      .subject-options { grid-template-columns: repeat(3, 1fr); }
+      
+      .app-header { padding: 6px; width: 100%; }
+      .app-header-actions { display: flex !important; width: 100% !important; justify-content: space-between !important; gap: 3px !important; overflow-x: visible !important; }
+      .app-header-actions .top-btn { flex: 1 !important; padding: 7px 2px !important; font-size: 0.65rem !important; text-align: center !important; border-radius: 6px !important; justify-content: center !important; }
+
+      .mobile-author-bar { display: block !important; background: rgba(0, 0, 0, 0.25); text-align: center; font-size: 0.68rem; color: #f59e0b; padding: 4px 0; border-bottom: 1px solid rgba(150,150,150,0.1); font-weight: 600; }
+      .game-grid-container { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (min-width: 769px) {
+      .google-tabs { display: flex !important; }
+      .mobile-bottom-nav { display: none !important; }
+      .grid-desktop-tintuc { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; flex: 1; min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toastContainer" style="position:fixed; top:20px; right:20px; z-index:99999999; display:flex; flex-direction:column; gap:8px; pointer-events:none;"></div>
+
+  <div id="appFrameWrapper">
+
+    <div id="loginScreen">
+      <div class="glass-panel card-box">
+        <div style="display:flex; justify-content:center; margin-bottom:10px;">
+          <img id="loginAvatarImg" src="https://cdn-icons-png.flaticon.com/512/1090/1090806.png" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'48\' fill=\'%23e11d48\'/><ellipse cx=\'35\' cy=\'45\' rx=\'12\' ry=\'18\' fill=\'white\'/><ellipse cx=\'65\' cy=\'45\' rx=\'12\' ry=\'18\' fill=\'white\'/></svg>';" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:2px solid var(--clock-color); box-shadow:0 4px 15px rgba(0,0,0,0.4);" alt="Avatar" />
+        </div>
+        <h2 id="authTitle" style="color:var(--clock-color); font-size:1.1rem; font-weight:800;">HỖ TRỢ HỌC TẬP</h2>
+        <p style="color: #f59e0b; margin-bottom: 0.4rem; font-size: 0.72rem; font-weight:bold;">✍️ Người sáng tác: HAK</p>
+        <p style="color: var(--text-sub); margin-bottom: 0.8rem; font-size: 0.75rem;">Kết nối, chia sẻ tài nguyên & bứt phá điểm số</p>
+        
+        <input type="text" id="loginPhone" placeholder="Số điện thoại..." style="padding:9px; margin-bottom:6px; width:100%; font-size:0.8rem;" onkeyup="if(event.key==='Enter') processAuth()" />
+        <div id="registerFields" style="display:none;">
+          <input type="text" id="loginName" placeholder="Họ tên hiển thị..." style="padding:9px; margin-bottom:6px; width:100%; font-size:0.8rem;" onkeyup="if(event.key==='Enter') processAuth()" />
+        </div>
+        <input type="password" id="loginPass" placeholder="Mật khẩu..." style="padding:9px; margin-bottom:8px; width:100%; font-size:0.8rem;" onkeyup="if(event.key==='Enter') processAuth()" />
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:0.75rem; color:var(--text-sub);">
+          <label style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+            <input type="checkbox" id="rememberMe" checked style="width:14px; height:14px;"> Ghi nhớ đăng nhập
+          </label>
+        </div>
+
+        <button class="btn-primary" style="width:100%; padding:10px;" id="mainAuthBtn" onclick="processAuth()">ĐĂNG NHẬP</button>
+        <p style="margin-top:8px; font-size:0.75rem; color:var(--text-sub); cursor:pointer;" id="toggleAuthText" onclick="toggleAuthMode()">Chưa có tài khoản? <strong style="color:var(--clock-color)">Đăng ký</strong></p>
+      </div>
+    </div>
+
+    <div id="mainWorkspace">
+      <header class="app-header">
+        <div class="header-brand-info" style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+          <img src="https://cdn-icons-png.flaticon.com/512/1090/1090806.png" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'48\' fill=\'%23e11d48\'/></svg>';" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1.5px solid var(--clock-color);" alt="Header Logo" />
+          <div class="app-title">Hỗ Trợ Học Tập <span style="font-size:0.72rem; color:var(--text-sub); font-weight:normal;">(<span id="headerClassCode">11A8</span>)</span></div>
+          <input type="text" id="classCodeInput" placeholder="Mã..." style="width:50px; padding:3px 5px; font-size:0.7rem; font-weight:bold; color:var(--clock-color);" oninput="updateClassCode(this.value)" />
+          <span style="font-size:0.68rem; color:#f59e0b; background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.4); padding:2px 6px; border-radius:6px; font-weight:bold; white-space:nowrap;">✍️ Sáng tác: HAK</span>
+        </div>
+
+        <nav class="google-tabs">
+          <button class="g-tab active" onclick="switchTab('tkb', this)">🗓️ TKB</button>
+          <button class="g-tab" onclick="switchTab('tintuc', this)">📰 Tin Tức & Deadline</button>
+          <button class="g-tab" onclick="switchTab('chat', this)">💬 Chat & Tài Liệu</button>
+          <button class="g-tab" onclick="switchTab('study', this)">📚 Học Tập</button>
+        </nav>
+
+        <div class="app-header-actions">
+          <button class="top-btn" style="background:#f59e0b; color:#fff; font-weight:bold;" onclick="openMinigamesModal()">🎮 Games</button>
+          <button class="top-btn" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b; border-color:rgba(245, 158, 11, 0.4); font-weight:bold;" onclick="showStreakInfo()">
+            <span id="streakCountText">🔥 1 Ngày</span>
+          </button>
+          <button class="top-btn" style="background:rgba(16,185,129,0.15); color:#10b981; border-color:rgba(16,185,129,0.3); font-weight:bold;" onclick="openOnlineUsersModal()">
+            <span id="onlineCountText">🟢 1 Online</span>
+          </button>
+          <button class="top-btn" style="background:#a855f7; color:#fff;" onclick="openAiModal()">🤖 AI</button>
+          <button class="top-btn" onclick="openSettingsAndProfile()">👤 Cài đặt</button>
+        </div>
+      </header>
+
+      <div class="mobile-author-bar">
+        ✍️ Người sáng tác: <strong>HAK</strong>
+      </div>
+
+      <div class="tab-content-area">
+
+        <div id="pane-tkb" class="tab-pane active" style="flex:1;">
+          <div class="glass-panel" style="display:flex; flex-direction:column; height: 100%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <h3 style="color:var(--clock-color); font-size:0.9rem;">🗓️ Thời Khóa Biểu Nhóm <span class="activeClassSpan">11A8</span></h3>
+            </div>
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+              <input type="file" id="timetableFileInput" accept="image/*" style="display:none;" onchange="handleTimetableFileUpload(this)" />
+              <button class="btn-primary" style="padding:8px 12px; font-size:0.75rem; width:100%;" onclick="document.getElementById('timetableFileInput').click()">🖼️ Tải Ảnh TKB Tự Đồng Bộ Thiết Bị</button>
+            </div>
+            <div style="flex:1; background:rgba(0,0,0,0.05); border-radius:8px; display:flex; justify-content:center; align-items:center; overflow:auto; padding:6px; min-height:220px;" id="timetableDisplayArea">
+              <p style="color:var(--text-sub); font-size:0.75rem;">Chưa có ảnh TKB. Nhấn nút phía trên để tải ảnh.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="pane-tintuc" class="tab-pane">
+          <div class="grid-desktop-tintuc">
+            <div class="glass-panel">
+              <h4 style="color:var(--clock-color); margin-bottom:6px; font-size:0.85rem;">📢 Bảng Thông Báo Nhóm</h4>
+              <input type="text" id="noticeTitleInput" placeholder="Tiêu đề thông báo..." style="padding:6px; width:100%; margin-bottom:6px; font-size:0.75rem;" />
+              <textarea id="noticeContentInput" placeholder="Nội dung chi tiết..." rows="2" style="padding:6px; width:100%; margin-bottom:6px; font-size:0.75rem;"></textarea>
+              <button class="btn-primary" style="padding:7px; font-size:0.75rem; width:100%; margin-bottom:8px;" onclick="postNotice()">Đăng Bảng Tin</button>
+              <div id="noticeListContainer" style="max-height:220px; overflow-y:auto;"></div>
+            </div>
+
+            <div class="glass-panel" style="background:rgba(244, 63, 94, 0.08); border:1px solid rgba(244,63,94,0.3);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <h4 style="color:#f43f5e; font-size:0.85rem;">🔔 Nhắc Nhở Hạn Nộp & Lịch Thi</h4>
+                <button class="top-btn" style="font-size:0.65rem; background:#e11d48; color:#fff;" onclick="openDeadlineModal()">➕ Thêm Hạn Nộp</button>
+              </div>
+              <div style="display:flex; gap:4px; margin-bottom:8px;">
+                <button class="top-btn" style="flex:1; background:#be123c; color:#fff; font-size:0.7rem; font-weight:bold; padding:6px;" onclick="addQuickReminder('homework')">📝 Bài Tập Tối Nay</button>
+                <button class="top-btn" style="flex:1; background:#a855f7; color:#fff; font-size:0.7rem; font-weight:bold; padding:6px;" onclick="addQuickReminder('exam')">🚨 Lịch Thi Ngày Mai</button>
+              </div>
+              <div id="classStudyRemindersList" style="max-height:180px; overflow-y:auto; font-size:0.75rem;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="pane-chat" class="tab-pane">
+          <div class="glass-panel" style="padding:10px; flex:1; display:flex; flex-direction:column; min-height:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid rgba(150,150,150,0.15); padding-bottom:6px;">
+              <div style="display:flex; gap:6px;">
+                <button class="sub-tab-btn active" id="btnSubTabChat" onclick="switchChatSubTab('chat')">💬 Trò Chuyện Nhóm</button>
+                <button class="sub-tab-btn" id="btnSubTabDocs" onclick="switchChatSubTab('docs')">📁 Kho Tài liệu Chung</button>
+              </div>
+              <button class="btn-primary" style="background:#8b5cf6; padding:4px 10px; font-size:0.72rem;" onclick="openDiscordVoiceModal()">🎙️ Phòng Voice Discord</button>
+            </div>
+
+            <div id="subPaneChat" class="chat-container">
+              <div class="chat-main">
+                <div id="chatMessages" class="chat-messages"></div>
+                <div style="display:flex; flex-direction:column; gap:4px; padding:6px; background:rgba(0,0,0,0.05); border-top:1px solid rgba(150,150,150,0.15);">
+                  <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                    <input type="file" id="chatFileInput" style="display:none;" onchange="handleChatFileSelect(this, 'file')" />
+                    <input type="file" id="chatImageInput" accept="image/*" style="display:none;" onchange="handleChatFileSelect(this, 'image')" />
+                    <input type="file" id="chatCameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleChatFileSelect(this, 'image')" />
+
+                    <button class="top-btn" style="font-size:0.7rem; padding:4px 6px;" onclick="document.getElementById('chatFileInput').click()">📎 File</button>
+                    <button class="top-btn" style="font-size:0.7rem; padding:4px 6px;" onclick="document.getElementById('chatImageInput').click()">🖼️ Ảnh</button>
+                    <button class="top-btn" style="font-size:0.7rem; padding:4px 6px; background:#0284c7; color:#fff;" onclick="document.getElementById('chatCameraInput').click()">📷 Chụp Ảnh Bài Tập</button>
+                    <button id="btnRecordVoiceMsg" class="top-btn" style="font-size:0.7rem; padding:4px 6px; background:#0284c7; color:#fff;" onclick="toggleRecordVoiceMsg()">🎙️ Voice</button>
+                    <span id="voiceRecordingStatus" style="font-size:0.65rem; color:#f87171; font-weight:bold; display:none;">🔴 Đang thu...</span>
+                  </div>
+
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <input type="text" id="chatInput" placeholder="Nhập tin nhắn hoặc gọi @ai..." style="flex:1; padding:7px 10px; font-size:0.8rem;" onkeyup="if(event.key==='Enter') sendChatMessage()" />
+                    <button class="btn-primary" style="padding:7px 12px; font-size:0.8rem;" onclick="sendChatMessage()">Gửi</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="subPaneDocs" style="display:none; flex:1; flex-direction:column; min-height:0; background:rgba(0,0,0,0.05); border-radius:10px; padding:10px; border:1px solid rgba(150,150,150,0.15);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;">
+                <div style="min-width:0; flex:1;">
+                  <h4 style="color:#0284c7; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📁 Kho Lưu Trữ Tài Liệu Lớp Chung</h4>
+                  <p style="font-size:0.65rem; color:var(--text-sub);">Bạn có thể bấm Xem trực tiếp ngay trên App hoặc Tải về máy.</p>
+                </div>
+                <input type="file" id="mainDocUploadInput" style="display:none;" onchange="handleDocumentUpload(this)" />
+                <button class="btn-primary" style="background:#0284c7; padding:6px 12px; font-size:0.75rem; flex-shrink:0;" onclick="document.getElementById('mainDocUploadInput').click()">📤 Tải File Lên Kho</button>
+              </div>
+              <div id="mainDocumentListContainer" style="flex:1; overflow-y:auto; padding-right:4px;"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="pane-study" class="tab-pane">
+          <div style="max-width: 850px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 10px;">
+            <div class="glass-panel" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <div style="text-align:center; border-bottom:1px solid rgba(150,150,150,0.15); padding-bottom:14px;">
+                <h3 style="font-size:0.85rem; color:var(--clock-color);">⏱️ ĐẾM GIỜ TẬP TRUNG (POMODORO)</h3>
+                <div class="timer-badge" id="mainTabTimerDisplay" style="margin: 6px 0;">45:00</div>
+                
+                <div style="display:flex; gap:6px; justify-content:center; align-items:center; margin-bottom:10px;">
+                  <select id="timeSelect" style="padding:6px; font-size:0.75rem;" onchange="handleTimeSelectChange(this)">
+                    <option value="25">25 phút (Pomodoro)</option>
+                    <option value="45" selected>45 phút (1 Tiết)</option>
+                    <option value="90">90 phút (Thi thử)</option>
+                    <option value="custom">⚙️ Tùy chỉnh phút...</option>
+                  </select>
+                  <input type="number" id="customMinutesInput" placeholder="Số phút..." style="display:none; width:80px; padding:6px; font-size:0.75rem;" min="1" max="300" oninput="updateCustomTimeDisplay(this.value)" />
+                </div>
+
+                <button class="btn-primary" style="padding:10px 22px; font-size:0.85rem; width:100%; max-width:280px;" onclick="startStudySession()">🚀 BẮT ĐẦU VÀO PHIÊN HỌC TẬP TRUNG</button>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <h4 style="color:var(--clock-color); font-size:0.85rem;">📘 Danh Mục Môn Học & Ghi Chú Riêng</h4>
+                  <span id="personalDataBadge" style="display:none; font-size:0.65rem; padding:2px 6px; background:#e11d48; color:#fff; border-radius:4px; font-weight:bold;">🔒 Chế Độ Cá Nhân</span>
+                </div>
+
+                <div class="subject-options">
+                  <button class="subject-btn active" onclick="selectSubject('Toán')">Toán</button>
+                  <button class="subject-btn" onclick="selectSubject('Lý')">Lý</button>
+                  <button class="subject-btn" onclick="selectSubject('Anh')">Anh</button>
+                  <button class="subject-btn" onclick="selectSubject('Văn')">Văn</button>
+                  <button class="subject-btn" style="background:rgba(225, 29, 72, 0.2); color:#fda4af; border-color:#e11d48;" onclick="selectSubject('Cá Nhân')">👤 Cá Nhân</button>
+                </div>
+
+                <div style="display:flex; gap:4px; margin:4px 0;">
+                  <select id="chapterSelect" style="flex:1; padding:6px; font-size:0.75rem;" onchange="currentChapter = this.value"></select>
+                  <button id="btnEditChapter" class="top-btn" style="background:#10b981; color:#fff; font-size:0.7rem;" onclick="openChapterModal()">⚙️ Sửa/Thêm</button>
+                </div>
+
+                <div style="border-top:1px solid rgba(150,150,150,0.15); padding-top:8px; margin-top:4px;">
+                  <span id="vocabSectionTitle" style="font-size:0.75rem; color:#f59e0b; font-weight:bold; display:block; margin-bottom:4px;">📖 Thêm Nhanh Từ Vựng / Công Thức (<span class="selectedSubjTitle">Toán</span>):</span>
+                  <div style="display:flex; gap:4px; margin-bottom:6px;">
+                    <input type="text" id="quickTitleInput" placeholder="Từ vựng / Tên công thức..." style="flex:1; padding:6px; font-size:0.75rem;" />
+                    <input type="text" id="quickContentInput" placeholder="Định nghĩa / Nội dung..." style="flex:1; padding:6px; font-size:0.75rem;" />
+                    <button class="btn-primary" style="padding:6px 12px; font-size:0.75rem;" onclick="addQuickKnowledge()">➕ Thêm</button>
+                  </div>
+                </div>
+
+                <div style="border-top:1px solid rgba(150,150,150,0.15); padding-top:8px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:0.78rem; color:#a855f7; font-weight:bold;">📚 Danh Sách Ghi Nhớ Lớp (<span class="selectedSubjTitle">Toán</span>):</span>
+                    
+                    <div id="vanUploadArea" style="display:none;">
+                      <input type="file" id="vanOutlineFileInput" accept="image/*,.doc,.docx,.txt" style="display:none;" onchange="handleVanOutlineUpload(this)" />
+                      <button class="top-btn" style="background:#ec4899; color:#fff; font-size:0.7rem;" onclick="document.getElementById('vanOutlineFileInput').click()">📄 Tải File/Ảnh</button>
+                    </div>
+                  </div>
+                  <div id="inlineSubjectFormulasList" style="max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.05); border-radius:6px; padding:6px;"></div>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:8px; border-top:1px solid rgba(150,150,150,0.15); padding-top:10px;">
+                <button class="top-btn" style="flex:1; font-size:0.78rem; background:#a855f7; color:#fff; padding:10px;" onclick="openFormulaModal()">📖 Xem Tất Cả Công Thức & Từ Vựng Lớp</button>
+                <button class="top-btn" style="flex:1; font-size:0.78rem; background:#0284c7; color:#fff; padding:10px;" onclick="switchTab('chat', document.querySelectorAll('.g-tab')[2]); switchChatSubTab('docs');">📁 Kho Tài Liệu Nhóm</button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <nav class="mobile-bottom-nav">
+        <button class="m-tab active" onclick="switchTab('tkb', this)"><span>🗓️</span><span>TKB</span></button>
+        <button class="m-tab" onclick="switchTab('tintuc', this)"><span>📰</span><span>Tin Tức</span></button>
+        <button class="m-tab" onclick="switchTab('chat', this)"><span>💬</span><span>Chat</span></button>
+        <button class="m-tab" onclick="switchTab('study', this)"><span>📚</span><span>Học Tập</span></button>
+      </nav>
+    </div>
+
+  </div>
+
+  <!-- MODAL MINIGAMES -->
+  <div id="minigamesModal" class="modal-overlay">
+    <div class="glass-panel card-box large" style="height:85vh; display:flex; flex-direction:column; text-align:left;">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:#f59e0b;">🎮 MINIGAMES ÔN TẬP CÔNG THỨC & TỪ VỰNG</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('minigamesModal').style.display='none'">✖ Đóng</button>
+      </div>
+
+      <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <select id="gameSubjFilter" style="padding:6px; font-size:0.75rem; flex:1;">
+          <option value="ALL">Tất cả môn học</option>
+          <option value="Toán">Toán Học</option>
+          <option value="Lý">Vật Lý</option>
+          <option value="Anh">Tiếng Anh</option>
+          <option value="Văn">Ngữ Văn</option>
+        </select>
+      </div>
+
+      <div id="gameMenu" class="game-grid-container">
+        <div class="game-card-btn" onclick="startMinigame('flashcard')">
+          <div style="font-size:1.5rem; margin-bottom:2px;">🃏</div>
+          <strong style="font-size:0.75rem; color:#38bdf8; display:block;">Flashcard</strong>
+          <span style="font-size:0.6rem; color:var(--text-sub);">Lật thẻ nhớ</span>
+        </div>
+        <div class="game-card-btn" onclick="startMinigame('quiz')">
+          <div style="font-size:1.5rem; margin-bottom:2px;">🎯</div>
+          <strong style="font-size:0.75rem; color:#a855f7; display:block;">Trắc Nghiệm</strong>
+          <span style="font-size:0.6rem; color:var(--text-sub);">Chọn 1 trong 4</span>
+        </div>
+        <div class="game-card-btn" onclick="startMinigame('matching')">
+          <div style="font-size:1.5rem; margin-bottom:2px;">🧩</div>
+          <strong style="font-size:0.75rem; color:#10b981; display:block;">Ghép Đôi</strong>
+          <span style="font-size:0.6rem; color:var(--text-sub);">Nối công thức</span>
+        </div>
+        <div class="game-card-btn" onclick="startMinigame('tf')">
+          <div style="font-size:1.5rem; margin-bottom:2px;">⚡</div>
+          <strong style="font-size:0.75rem; color:#f43f5e; display:block;">Đúng Hay Sai?</strong>
+          <span style="font-size:0.6rem; color:var(--text-sub);">Phản xạ siêu tốc</span>
+        </div>
+        <div class="game-card-btn" onclick="startMinigame('scramble')">
+          <div style="font-size:1.5rem; margin-bottom:2px;">🔤</div>
+          <strong style="font-size:0.75rem; color:#eab308; display:block;">Sắp Xếp Từ</strong>
+          <span style="font-size:0.6rem; color:var(--text-sub);">Ghép câu chuẩn</span>
+        </div>
+        <div class="game-card-btn" onclick="startMinigame('fill')">
+          <div style="font-size:1.5rem; margin-bottom:2px;">✏️</div>
+          <strong style="font-size:0.75rem; color:#06b6d4; display:block;">Điền Từ Khuyết</strong>
+          <span style="font-size:0.6rem; color:var(--text-sub);">Điền chỗ trống</span>
+        </div>
+      </div>
+
+      <div id="gamePlayArea" style="flex:1; background:rgba(0,0,0,0.1); border-radius:12px; padding:12px; border:1px solid rgba(150,150,150,0.15); overflow-y:auto; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+        <p style="color:var(--text-sub); font-size:0.8rem;">Vui lòng chọn 1 trò chơi ở phía trên để bắt đầu ôn tập!</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="passConfirmModal" class="modal-overlay">
+    <div class="glass-panel card-box">
+      <h3 style="color:var(--clock-color); margin-bottom:8px; font-size:0.95rem;">🔒 XÁC NHẬN MẬT KHẨU</h3>
+      <p style="color:var(--text-sub); font-size:0.75rem; margin-bottom:12px;">Nhập mật khẩu tài khoản của bạn để dừng phiên học:</p>
+      <input type="password" id="stopStudyPassInput" placeholder="Mật khẩu tài khoản..." style="width:100%; padding:8px; margin-bottom:12px; font-size:0.8rem;" onkeyup="if(event.key==='Enter') verifyStopStudyPass()" />
+      <div style="display:flex; gap:8px;">
+        <button class="btn-primary" style="flex:1; padding:8px; font-size:0.8rem;" onclick="verifyStopStudyPass()">Xác nhận</button>
+        <button class="top-btn" style="padding:8px; font-size:0.75rem;" onclick="closePassConfirmModal()">Hủy</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="discordVoiceModal" class="modal-overlay">
+    <div class="glass-panel card-box large" style="display:flex; flex-direction:column; text-align:left; height:82vh;">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:#8b5cf6;">🎙️ PHÒNG VOICE & CHIA SẺ MÀN HÌNH (DISCORD MODE)</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('discordVoiceModal').style.display='none'">✖ Đóng Khung</button>
+      </div>
+
+      <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+        <button id="btnToggleCam" class="top-btn" style="background:#0284c7; color:#fff; padding:6px 12px; font-size:0.75rem;" onclick="toggleCameraStream()">📷 Bật Camera</button>
+        <button id="btnToggleScreen" class="top-btn" style="background:#a855f7; color:#fff; padding:6px 12px; font-size:0.75rem;" onclick="toggleScreenShare()">🖥️ Chia Sẻ Màn Hình</button>
+        <button id="btnLeaveVoice" class="top-btn" style="background:#e11d48; color:#fff; padding:6px 12px; font-size:0.75rem;" onclick="leaveDiscordVoice()">🔴 Rời Phòng Voice</button>
+      </div>
+
+      <div id="discordVideoGrid" class="discord-grid" style="flex:1; overflow-y:auto; padding:4px;">
+        <div class="discord-user-card" id="myUserVideoCard">
+          <video id="myCameraFeed" autoplay playsinline muted class="discord-video"></video>
+          <div class="discord-user-tag" id="myUserTagLabel">Bạn (Chưa bật Cam)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="docPreviewModal" class="modal-overlay">
+    <div class="glass-panel card-box large" style="height:85vh; display:flex; flex-direction:column; text-align:left;">
+      <div class="modal-header">
+        <h3 id="previewDocTitle" class="modal-header-title" style="color:var(--clock-color);">👁️ Xem Trực Tiếp Tài Liệu Direct</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('docPreviewModal').style.display='none'">✖ Đóng</button>
+      </div>
+      <div id="docPreviewBody" style="flex:1; overflow:auto; background:rgba(0,0,0,0.2); border-radius:8px; padding:10px; display:flex; justify-content:center; align-items:center;"></div>
+    </div>
+  </div>
+
+  <div id="standaloneDocModal" class="modal-overlay">
+    <div class="glass-panel card-box large" style="height:80vh; display:flex; flex-direction:column; text-align:left;">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:#0284c7;">📁 KHO TÀI LIỆU LỚP CHUNG</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('standaloneDocModal').style.display='none'">✖ Đóng</button>
+      </div>
+      <div id="standaloneDocContainer" style="flex:1; overflow-y:auto; padding:4px;"></div>
+    </div>
+  </div>
+
+  <div id="focusExitOptionsModal" class="modal-overlay">
+    <div class="glass-panel card-box" style="text-align:center;">
+      <h3 style="color:#10b981; margin-bottom:6px; font-size:0.95rem;">🔓 ĐÃ XÁC NHẬN MẬT KHẨU THÀNH CÔNG</h3>
+      <p style="color:var(--text-sub); font-size:0.75rem; margin-bottom:12px;">Bạn muốn thực hiện thao tác nào tiếp theo?</p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn-primary" style="background:#0284c7; padding:10px; font-size:0.8rem;" onclick="confirmExitFocusToHome()">🏠 Trở Về Màn Hình Chính</button>
+        <button class="btn-primary" style="background:#e11d48; padding:10px; font-size:0.8rem;" onclick="confirmExitFocusToLogout()">🚪 Đăng Xuất & Thoát Ứng Dụng</button>
+        <button class="top-btn" style="padding:8px; font-size:0.75rem;" onclick="document.getElementById('focusExitOptionsModal').style.display='none'">✖ Tiếp Tục Học (Hủy)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="studyScreen" style="display:none; width:100vw; height:100vh; flex-direction:column; z-index:999999; position:fixed; top:0; left:0; background:var(--bg-workspace); padding:16px; overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); padding:10px 16px; border-radius:12px; margin-bottom:10px; border:1px solid rgba(150,150,150,0.2);">
+      <div>
+        <h2 style="color:var(--clock-color); font-size:1rem;">🛡️ PHIÊN HỌC TẬP TẬP TRUNG (FOCUS MODE)</h2>
+        <p style="font-size:0.68rem; color:var(--text-sub);">Chế độ tập trung tối đa. Nhạc phát ngầm & Trợ lý AI cá nhân.</p>
+      </div>
+
+      <div>
+        <button class="btn-primary" style="background:#e11d48; padding:8px 16px; font-size:0.8rem;" onclick="promptStopStudySession()">🔒 Dừng Phiên Học</button>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 320px 1fr; gap:12px; flex:1; min-height:0;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="glass-panel" style="text-align:center; padding:16px; display:flex; flex-direction:column; justify-content:center;">
+          <h4 style="font-size:0.8rem; color:var(--clock-color); margin-bottom:4px;">⏱️ THỜI GIAN CÒN LẠI</h4>
+          <div class="timer-badge" id="timerDisplay" style="font-size:3.2rem; margin:6px 0;">45:00</div>
+        </div>
+
+        <div class="glass-panel" style="padding:12px; flex:1; display:flex; flex-direction:column;">
+          <h4 style="color:#10b981; font-size:0.8rem; margin-bottom:6px;">🎧 Khung Phát Nhạc Nền (Audio Player)</h4>
+          <div style="display:flex; gap:4px; margin-bottom:8px;">
+            <input type="text" id="musicUrlInput" placeholder="Dán link YouTube hoặc Spotify..." style="flex:1; padding:6px; font-size:0.72rem;" />
+            <button class="top-btn" style="background:#10b981; color:#fff;" onclick="loadCustomMusic()">▶ Phát</button>
+          </div>
+          
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+            <button class="top-btn" style="font-size:0.7rem; background:#ff0000; color:#fff; text-align:left; padding:8px;" onclick="playPresetMusic('lofi')">📺 Lofi Chill Study (Youtube Audio)</button>
+            <button class="top-btn" style="font-size:0.7rem; background:#1db954; color:#fff; text-align:left; padding:8px;" onclick="playPresetMusic('spotify')">🎧 Deep Focus (Spotify Audio)</button>
+            <button class="top-btn" style="font-size:0.7rem; background:#0284c7; color:#fff; text-align:left; padding:8px;" onclick="playPresetMusic('piano')">🎹 Piano Thư Giãn Non-stop</button>
+          </div>
+
+          <div id="visibleMusicContainer" style="width:100%; height:130px; border-radius:8px; overflow:hidden; background:#000; border:1px solid rgba(150,150,150,0.2); margin-top:auto;">
+            <iframe id="musicIframe" src="about:blank" style="width:100%; height:100%; border:none;" allow="autoplay; encrypted-media"></iframe>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-panel" style="display:flex; flex-direction:column; height:100%; padding:10px; min-height:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:1px solid rgba(150,150,150,0.15); padding-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <h4 style="color:#a855f7; font-size:0.85rem;">🤖 Trợ Lý AI Cá Nhân & Tra Cứu Nhanh</h4>
+          <div style="display:flex; gap:4px;">
+            <button class="top-btn" style="background:#0284c7; color:#fff; font-size:0.7rem; padding:4px 8px;" onclick="openFormulaModal()">📖 Từ Vựng & Công Thức</button>
+            <button class="top-btn" style="background:#8b5cf6; color:#fff; font-size:0.7rem; padding:4px 8px;" onclick="openFocusDocPopup()">📁 Kho Tài Liệu</button>
+          </div>
+        </div>
+        
+        <div class="chat-main" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+          <div id="focusAiChatMessages" class="chat-messages" style="flex:1; padding:10px; overflow-y:auto;">
+            <div class="chat-msg ai">
+              <div class="chat-content-wrap">
+                <span class="chat-info">🤖 Trợ Lý AI Cá Nhân</span>
+                <div class="chat-bubble">Chào bạn! Mình có thể giúp gì cho bạn hôm nay? Nhờ mình giải bài tập hoặc trò chuyện thoải mái nhé!</div>
+              </div>
+            </div>
+          </div>
+          
+          <div style="display:flex; flex-direction:column; gap:4px; padding:8px; background:rgba(0,0,0,0.1); border-top:1px solid rgba(150,150,150,0.15);">
+            <div style="display:flex; gap:4px;">
+              <input type="file" id="focusAiCameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleAiCameraUpload(this, 'focus')" />
+              <button class="top-btn" style="background:#0284c7; color:#fff; font-size:0.75rem; padding:4px 8px;" onclick="document.getElementById('focusAiCameraInput').click()">📷 Chụp Ảnh Bài Tập</button>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <textarea id="focusAiInput" rows="2" placeholder="Nhập câu hỏi bài tập hoặc trò chuyện..." style="flex:1; padding:8px; font-size:0.8rem; resize:none;" onkeyup="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendFocusAiMessage(); }"></textarea>
+              <button class="btn-primary" style="background:#a855f7; padding:8px 16px; font-size:0.8rem;" onclick="sendFocusAiMessage()">🚀 Gửi AI</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="formulaModal" class="modal-overlay">
+    <div class="glass-panel card-box large" style="display:flex; flex-direction:column; text-align:left; height:80vh;">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:#a855f7;">📖 KHO CÔNG THỨC & TỪ VỰNG LỚP CHUNG</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('formulaModal').style.display='none'">✖ Đóng</button>
+      </div>
+
+      <div style="display:flex; gap:4px; margin-bottom:8px;">
+        <select id="formulaSubjFilter" style="padding:6px; font-size:0.75rem;" onchange="renderFormulaList()">
+          <option value="ALL">Tất cả môn</option>
+          <option value="Toán">Toán Học</option>
+          <option value="Lý">Vật Lý</option>
+          <option value="Anh">Tiếng Anh</option>
+          <option value="Văn">Ngữ Văn</option>
+        </select>
+        <input type="text" id="formulaSearchInput" placeholder="Tìm kiếm công thức/từ vựng..." style="flex:1; padding:6px; font-size:0.75rem;" oninput="renderFormulaList()" />
+      </div>
+
+      <div id="classFormulasContainer" style="flex:1; overflow-y:auto; padding:4px; margin-bottom:8px;"></div>
+
+      <div style="background:rgba(0,0,0,0.05); padding:8px; border-radius:8px; border:1px solid rgba(150,150,150,0.15);">
+        <span style="font-size:0.75rem; font-weight:bold; color:var(--clock-color); display:block; margin-bottom:4px;">➕ Đóng Góp Vào Kho Lớp Chung:</span>
+        <div style="display:flex; gap:4px; margin-bottom:4px;">
+          <select id="newFormulaSubj" style="padding:4px; font-size:0.75rem;">
+            <option value="Toán">Toán</option><option value="Lý">Lý</option><option value="Anh">Anh</option><option value="Văn">Văn</option>
+          </select>
+          <input type="text" id="newFormulaTitle" placeholder="Tiêu đề / Tên công thức..." style="flex:1; padding:4px; font-size:0.75rem;" />
+        </div>
+        <textarea id="newFormulaContent" rows="2" placeholder="Nội dung chi tiết..." style="width:100%; padding:4px; font-size:0.75rem; margin-bottom:4px;"></textarea>
+        <button class="btn-primary" style="background:#a855f7; width:100%; padding:6px; font-size:0.75rem;" onclick="addNewClassFormula()">Đăng Vào Kho Lớp</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="chapterModal" class="modal-overlay">
+    <div class="glass-panel card-box" style="text-align:left;">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:#10b981;">⚙️ SỬA/THÊM CHƯƠNG (<span id="chapModalSubjText">Toán</span>)</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('chapterModal').style.display='none'">✖ Đóng</button>
+      </div>
+      
+      <label style="font-size:0.7rem; color:var(--text-sub); margin-bottom:2px; display:block;">1. Thêm chương mới:</label>
+      <div style="display:flex; gap:4px; margin-bottom:10px;">
+        <input type="text" id="newChapterInput" placeholder="Nhập tên chương..." style="flex:1; padding:6px; font-size:0.75rem;" />
+        <button class="btn-primary" style="background:#10b981; padding:6px 10px; font-size:0.75rem;" onclick="addNewChapter()">➕ Thêm</button>
+      </div>
+
+      <label style="font-size:0.7rem; color:var(--text-sub); margin-bottom:2px; display:block;">2. Chọn chương hiện có để Sửa/Xóa:</label>
+      <select id="modalChapterSelect" style="width:100%; padding:6px; font-size:0.75rem; margin-bottom:6px;" onchange="handleModalChapterSelect(this.value)"></select>
+      <input type="text" id="editChapterInput" placeholder="Tên sau khi sửa..." style="width:100%; padding:6px; font-size:0.75rem; margin-bottom:8px;" />
+      
+      <div style="display:flex; gap:4px;">
+        <button class="btn-primary" style="flex:1; background:#38bdf8; color:#000; padding:6px;" onclick="saveEditedChapter()">Lưu Sửa Tên</button>
+        <button class="btn-primary" style="background:#e11d48; padding:6px;" onclick="deleteSelectedChapter()">Xóa Chương</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deadlineModal" class="modal-overlay">
+    <div class="glass-panel card-box">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:#e11d48;">📅 TẠO NHẮC NHỜ HỌC CHUNG</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('deadlineModal').style.display='none'">✖ Đóng</button>
+      </div>
+      <input type="text" id="dlTitle" placeholder="Tên bài tập..." style="width:100%; padding:6px; font-size:0.75rem; margin-bottom:6px;" />
+      <input type="date" id="dlDate" style="width:100%; padding:6px; font-size:0.75rem; margin-bottom:8px;" />
+      <button class="btn-primary" style="width:100%; padding:7px; background:#e11d48;" onclick="addDeadline()">Tạo Nhắc Nhở</button>
+    </div>
+  </div>
+
+  <div id="onlineUsersModal" class="modal-overlay"><div class="glass-panel card-box" style="text-align:left;"><div class="modal-header"><h3 class="modal-header-title" style="color:#10b981;">🟢 THÀNH VIÊN ONLINE</h3><button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('onlineUsersModal').style.display='none'">✖ Đóng</button></div><div id="onlineUsersList" style="max-height:250px; overflow-y:auto; font-size:0.8rem;"></div></div></div>
+  
+  <div id="profileModal" class="modal-overlay">
+    <div class="glass-panel card-box large" style="text-align:left; max-height:85vh;">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:var(--clock-color);">👤 HỒ SƠ & CÀI ĐẶT HỆ THỐNG</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('profileModal').style.display='none'">✖ Đóng</button>
+      </div>
+
+      <div style="background:rgba(168, 85, 247, 0.12); border:1px solid rgba(168, 85, 247, 0.3); padding:10px; border-radius:8px; margin-bottom:10px;">
+        <h4 style="font-size:0.8rem; color:#a855f7; margin-bottom:4px;">🔑 Cấu Hình AI Gemini Thông Minh (Tự động đồng bộ cho toàn nhóm)</h4>
+        <p style="font-size:0.68rem; color:var(--text-sub); margin-bottom:6px;">Lấy Key từ <a href="https://aistudio.google.com" target="_blank" style="color:#38bdf8; text-decoration:underline;">aistudio.google.com</a> và dán vào đây (Chỉ cần 1 máy lưu, mọi máy khác trong nhóm tự nhận):</p>
+        <div style="display:flex; gap:6px;">
+          <input type="password" id="geminiApiKeyInput" placeholder="Dán Gemini API Key..." style="flex:1; padding:6px; font-size:0.75rem;" />
+          <button class="btn-primary" style="background:#a855f7; padding:6px 12px; font-size:0.75rem;" onclick="saveGeminiApiKey()">Lưu & Đồng Bộ Key</button>
+        </div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(150,150,150,0.15);">
+        <h4 style="font-size:0.8rem; color:var(--clock-color); margin-bottom:6px;">🔥 Cấu Hình Đồng Bộ Firebase (ĐIỆN THOẠI & MÁY TÍNH)</h4>
+        <p style="font-size:0.68rem; color:var(--text-sub); margin-bottom:6px;">Nhập Firebase DB URL để tự động đồng bộ dữ liệu chat, bài tập, thời khóa biểu giữa điện thoại và máy tính:</p>
+        <input type="text" id="firebaseDbUrlInput" placeholder="https://your-app-default-rtdb.firebaseio.com" style="width:100%; padding:6px; font-size:0.75rem; margin-bottom:6px;" />
+        <button class="btn-primary" style="background:#0284c7; width:100%; padding:6px; font-size:0.75rem;" onclick="saveFirebaseConfig()">Lưu Firebase URL</button>
+      </div>
+      
+      <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(150,150,150,0.15);">
+        <h4 style="font-size:0.8rem; color:var(--clock-color); margin-bottom:6px;">📌 Thông Tin Cá Nhân</h4>
+        <p style="font-size:0.75rem; margin-bottom:4px;">Họ tên: <strong id="profileName">---</strong></p>
+        <p style="font-size:0.75rem; margin-bottom:4px;">Số điện thoại: <strong id="profilePhone">---</strong></p>
+        <p style="font-size:0.75rem;">Quyền hạn: <strong id="profileRole" style="color:var(--warning);">---</strong></p>
+        <p style="font-size:0.75rem; margin-top:4px; color:#f59e0b;">Tác giả ứng dụng: <strong>HAK</strong></p>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(150,150,150,0.15);">
+        <h4 style="font-size:0.8rem; color:var(--clock-color); margin-bottom:8px;">🔊 Điều Chỉnh Âm Thanh Hệ Thống</h4>
+        
+        <div style="margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:2px;">
+            <span>🎵 Âm lượng nhạc nền Focus:</span>
+            <span id="labelVolMusic">80%</span>
+          </div>
+          <input type="range" class="volume-slider" min="0" max="100" value="80" oninput="updateSystemVolume('music', this.value)" />
+        </div>
+
+        <div style="margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:2px;">
+            <span>🔔 Âm lượng thông báo / Nhắc nhở:</span>
+            <span id="labelVolNotify">100%</span>
+          </div>
+          <input type="range" class="volume-slider" min="0" max="100" value="100" oninput="updateSystemVolume('notify', this.value)" />
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:2px;">
+            <span>🎙️ Âm lượng Voice Phòng Chat:</span>
+            <span id="labelVolVoice">90%</span>
+          </div>
+          <input type="range" class="volume-slider" min="0" max="100" value="90" oninput="updateSystemVolume('voice', this.value)" />
+        </div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(150,150,150,0.15);">
+        <h4 style="font-size:0.8rem; color:var(--clock-color); margin-bottom:6px;">🎨 Chủ Đề Mẫu Giao Diện</h4>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; margin-bottom:8px;">
+          <button class="top-btn" style="font-size:0.7rem;" onclick="changeTheme('dark')">🌙 Tối (Mặc định)</button>
+          <button class="top-btn" style="font-size:0.7rem;" onclick="changeTheme('light')">☀️ Sáng (Light)</button>
+          <button class="top-btn" style="font-size:0.7rem;" onclick="changeTheme('pastel')">🌸 Pastel Dịu</button>
+          <button class="top-btn" style="font-size:0.7rem;" onclick="changeTheme('cyber')">🔮 Cyberpunk</button>
+          <button class="top-btn" style="font-size:0.7rem;" onclick="changeTheme('emerald')">🌲 Emerald Green</button>
+        </div>
+
+        <h4 style="font-size:0.75rem; color:var(--clock-color); margin-bottom:4px;">🖼️ 1. Đặt Ảnh Làm Hình Nền Chính:</h4>
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">
+          <input type="file" id="customBgUploadInput" accept="image/*" style="display:none;" onchange="handleCustomBgUpload(this)" />
+          <button class="btn-primary" style="background:#0284c7; padding:6px 12px; font-size:0.75rem; flex:1;" onclick="document.getElementById('customBgUploadInput').click()">🖼️ Chọn Ảnh Nền</button>
+          <button class="top-btn" style="background:#e11d48; color:#fff; font-size:0.75rem;" onclick="resetCustomBg()">Xóa Ảnh Nền</button>
+        </div>
+
+        <h4 style="font-size:0.75rem; color:#a855f7; margin-bottom:4px;">🖼️ 2. Đặt Ảnh Khung Viền Xung Quanh Màn Hình:</h4>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="file" id="customFrameUploadInput" accept="image/*" style="display:none;" onchange="handleCustomFrameUpload(this)" />
+          <button class="btn-primary" style="background:#a855f7; padding:6px 12px; font-size:0.75rem; flex:1;" onclick="document.getElementById('customFrameUploadInput').click()">🖼️ Chọn Ảnh Khung Viền</button>
+          <button class="top-btn" style="background:#e11d48; color:#fff; font-size:0.75rem;" onclick="resetCustomFrame()">Xóa Khung Viền</button>
+        </div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(150,150,150,0.15);">
+        <h4 style="font-size:0.8rem; color:var(--clock-color); margin-bottom:6px;">✏️ Cập Nhật Mật Khẩu & Họ Tên</h4>
+        <div style="display:flex; gap:4px; margin-bottom:6px;">
+          <input type="text" id="editProfileNameInput" placeholder="Họ tên hiển thị mới..." style="flex:1; padding:6px; font-size:0.75rem;" />
+          <input type="password" id="editProfilePassInput" placeholder="Mật khẩu mới..." style="flex:1; padding:6px; font-size:0.75rem;" />
+        </div>
+        <button class="btn-primary" style="width:100%; padding:6px; font-size:0.75rem; background:#10b981;" onclick="updateProfileInfo()">Lưu Thay Đổi Thông Tin</button>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(150,150,150,0.15);">
+        <h4 style="font-size:0.8rem; color:var(--clock-color); margin-bottom:6px;">🏫 Quản Lý Mã Lớp / Nhóm</h4>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="settingClassCodeInput" placeholder="Mã nhóm (VD: 11A8)..." style="flex:1; padding:6px; font-size:0.75rem;" />
+          <button class="btn-primary" style="padding:6px 10px; font-size:0.75rem;" onclick="saveSettingClassCode()">Cập nhật</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button class="btn-primary" style="background:#e11d48; width:100%; padding:8px; font-size:0.75rem;" onclick="logoutUser()">Đăng xuất tài khoản</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="aiModal" class="modal-overlay">
+    <div class="glass-panel card-box large" style="height:80vh; max-height:500px; display:flex; flex-direction:column; text-align:left;">
+      <div class="modal-header">
+        <h3 class="modal-header-title" style="color:#a855f7;">🤖 AI TRỢ LÝ HỌC TẬP</h3>
+        <button class="top-btn" style="flex-shrink:0;" onclick="document.getElementById('aiModal').style.display='none'">✖ Đóng</button>
+      </div>
+      
+      <div style="display:flex; gap:4px; margin-bottom:6px;">
+        <input type="file" id="aiCameraInputModal" accept="image/*" capture="environment" style="display:none;" onchange="handleAiCameraUpload(this, 'modal')" />
+        <button class="top-btn" style="background:#0284c7; color:#fff; font-size:0.72rem; padding:4px 8px;" onclick="document.getElementById('aiCameraInputModal').click()">📷 Chụp Ảnh Bài Tập</button>
+      </div>
+
+      <textarea id="aiQuestionInput" rows="2" placeholder="Hỏi AI bài tập hoặc trò chuyện thoải mái..." style="width:100%; margin-bottom:6px; padding:6px; font-size:0.75rem; resize:none;"></textarea>
+      <button class="btn-primary" style="background:#a855f7; padding:6px; font-size:0.75rem; margin-bottom:6px;" onclick="askAI()">🚀 Hỏi AI</button>
+      <div id="aiResponseBox" style="flex:1; padding:8px; border-radius:6px; border:1px solid rgba(150,150,150,0.15); overflow-y:auto; font-size:0.75rem;"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let currentClassCode = '11A8';
+    let currentSubject = 'Toán';
+    let timerId = null, timeLeft = 0, totalMinutes = 45;
+    let isLoginMode = true;
+    let localStream = null, screenStream = null, isCamActive = false, isScreenSharing = false;
+    let mediaRecorderMsg = null, audioChunksMsg = [], isRecordingVoiceMsg = false;
+    const ADMIN_PHONE = '0906292600';
+    let firebaseDb = null;
+
+    let currentGameData = [];
+    let currentQuizIndex = 0;
+    let currentGameScore = 0;
+    let isFlashcardFlipped = false;
+    let selectedMatchTitle = null;
+    let selectedMatchContent = null;
+    let selectedScrambleWords = [];
+
+    // TÍCH HỢP SẴN MẶC ĐỊNH FIREBASE VÀ AI KEY CHO NGƯỜI DÙNG
+    const DEFAULT_FIREBASE_URL = 'https://app-hoc-tap-ee828-default-rtdb.asia-southeast1.firebasedatabase.app/';
+    const DEFAULT_GEMINI_KEY =
+
+    if (!localStorage.getItem('firebase_db_url')) {
+      localStorage.setItem('firebase_db_url', DEFAULT_FIREBASE_URL);
+    }
+    if (!localStorage.getItem('gemini_api_key')) {
+      localStorage.setItem('gemini_api_key', DEFAULT_GEMINI_KEY);
+    }
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if(!audioCtx) audioCtx = new AudioCtx();
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        if (type === 'click') {
+          const osc = ctx.createOscillator(); const gain = ctx.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(180, now + 0.04);
+          gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.connect(gain); gain.connect(ctx.destination); osc.start(now); osc.stop(now + 0.04);
+        } else if (type === 'toast' || type === 'notify') {
+          [659.25, 987.77].forEach((freq, idx) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.1, now + idx * 0.08); gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.2);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(now + idx * 0.08); osc.stop(now + idx * 0.08 + 0.2);
+          });
+        } else if (type === 'alarm') {
+          [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+            gain.gain.setValueAtTime(0.18, now + idx * 0.14); gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.25);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(now + idx * 0.14); osc.stop(now + idx * 0.14 + 0.25);
+          });
+        } else if (type === 'success') {
+          [523.25, 659.25, 783.99].forEach((freq, idx) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+            gain.gain.setValueAtTime(0.12, now + idx * 0.06); gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.22);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(now + idx * 0.06); osc.stop(now + idx * 0.06 + 0.22);
+          });
+        }
+      } catch(e) {}
+    }
+
+    function showToast(message, type = 'info') {
+      playSound('toast');
+      const container = document.getElementById('toastContainer');
+      if(!container) return;
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        background: rgba(30, 41, 59, 0.95);
+        color: #fff;
+        border-left: 4px solid ${type === 'error' ? '#f43f5e' : (type === 'success' ? '#10b981' : '#38bdf8')};
+        padding: 10px 16px;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        font-size: 0.8rem;
+        font-weight: 600;
+        backdrop-filter: blur(8px);
+        pointer-events: auto;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.3s ease;
+        max-width: 320px;
+      `;
+      toast.innerHTML = `<div>${message}</div>`;
+      container.appendChild(toast);
+      
+      requestAnimationFrame(() => {
+        toast.style.opacity = '1'; toast.style.transform = 'translateY(0)';
+      });
+
+      setTimeout(() => {
+        toast.style.opacity = '0'; toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    window.alert = function(msg) {
+      showToast(msg, msg.includes('❌') || msg.includes('không') || msg.includes('hợp lệ') ? 'error' : 'info');
+    };
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('button, .btn-primary, .top-btn, .g-tab, .m-tab, .subject-btn')) {
+        playSound('click');
+      }
+    });
+
+    const initialClassFormulas = [
+      { id: 1, subj: 'Toán', title: 'Công Thức Đạo Hàm Cơ Bản', content: '(x^n)\' = n*x^(n-1)\n(sin x)\' = cos x', author: 'Hệ thống' },
+      { id: 2, subj: 'Lý', title: 'Phương Trình Dao Động Điều Hòa', content: 'x = A*cos(ωt + φ)\nv = -ωA*sin(ωt + φ)', author: 'Hệ thống' },
+      { id: 3, subj: 'Anh', title: 'Thì Hiện Tại Hoàn Thành', content: 'S + have/has + V3/ed', author: 'Hệ thống' },
+      { id: 4, subj: 'Văn', title: 'Dàn Ý Phân Tích Bài Thơ Đất Nước', content: '1. Mở bài: Giới thiệu tác giả Nguyễn Đình Thi & hoàn cảnh sáng tác.\n2. Thân bài: Cảm nhận về hình ảnh Đất Nước trong hoài niệm và kháng chiến.\n3. Kết bài: Tổng kết giá trị nghệ thuật.', author: 'Hệ thống' }
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        initFirebaseIfConfigured();
+        let savedUserRaw = localStorage.getItem('app_user_remembered') || sessionStorage.getItem('app_user_session');
+        let savedUser = null;
+        if (savedUserRaw) { try { savedUser = JSON.parse(savedUserRaw); } catch(e) {} }
+
+        if (savedUser) {
+          currentUser = savedUser;
+          let savedCode = localStorage.getItem('saved_class_code');
+          if(savedCode) currentClassCode = savedCode;
+          document.getElementById('classCodeInput').value = currentClassCode;
+          document.querySelectorAll('.activeClassSpan').forEach(el => el.textContent = currentClassCode);
+          document.getElementById('headerClassCode').textContent = currentClassCode;
+
+          loadSavedThemeOrBg();
+          loadSavedCustomFrame();
+          renderTimetableImage();
+          renderNotices();
+          renderClassReminders();
+          renderChapterDropdown();
+          renderInlineSubjectFormulas();
+          renderChat();
+          renderMainDocumentList();
+          updateUserOnlineStatus();
+          updateStreakCount();
+          setInterval(updateUserOnlineStatus, 10000);
+          
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('mainWorkspace').style.display = 'flex';
+        } else {
+          document.getElementById('loginScreen').style.display = 'flex';
+        }
+      } catch (err) {
+        document.getElementById('loginScreen').style.display = 'flex';
+      }
+
+      window.addEventListener('resize', renderTimetableImage);
+    });
+
+    /* LẮNG NGHE & ĐỒNG BỘ REALTIME FIREBASE */
+    function initFirebaseIfConfigured() {
+      let url = localStorage.getItem('firebase_db_url') || DEFAULT_FIREBASE_URL;
+      if (url && typeof firebase !== 'undefined') {
+        try {
+          if (!firebase.apps.length) {
+            firebase.initializeApp({ databaseURL: url });
+          }
+          firebaseDb = firebase.database();
+          listenFirebaseChat();
+          listenFirebaseReminders();
+          listenFirebaseTimetable();
+          listenFirebaseConfig();
+        } catch(e) {}
+      }
+    }
+
+    function saveFirebaseConfig() {
+      let url = document.getElementById('firebaseDbUrlInput').value.trim() || DEFAULT_FIREBASE_URL;
+      localStorage.setItem('firebase_db_url', url);
+      initFirebaseIfConfigured();
+      showToast("🎉 Đã lưu cấu hình Firebase đồng bộ thành công!", "success");
+    }
+
+    function listenFirebaseChat() {
+      if (!firebaseDb) return;
+      firebaseDb.ref(`chat_${currentClassCode}`).on('value', (snapshot) => {
+        let val = snapshot.val();
+        if (val) {
+          let list = Array.isArray(val) ? val : Object.values(val);
+          localStorage.setItem(`chat_${currentClassCode}`, JSON.stringify(list));
+          renderChat();
+        }
+      });
+    }
+
+    function listenFirebaseReminders() {
+      if (!firebaseDb) return;
+      firebaseDb.ref(`reminders_${currentClassCode}`).on('value', (snapshot) => {
+        let val = snapshot.val();
+        if (val) {
+          let list = Array.isArray(val) ? val : Object.values(val);
+          localStorage.setItem(`reminders_${currentClassCode}`, JSON.stringify(list));
+          renderClassReminders();
+        }
+      });
+    }
+
+    function listenFirebaseTimetable() {
+      if (!firebaseDb) return;
+      firebaseDb.ref(`timetable_${currentClassCode}`).on('value', (snapshot) => {
+        let val = snapshot.val();
+        if (val) {
+          localStorage.setItem(`timetable_${currentClassCode}`, typeof val === 'object' ? JSON.stringify(val) : val);
+          renderTimetableImage();
+        }
+      });
+    }
+
+    function listenFirebaseConfig() {
+      if (!firebaseDb) return;
+      firebaseDb.ref(`config_${currentClassCode}`).on('value', (snapshot) => {
+        let val = snapshot.val();
+        if (val && val.geminiApiKey) {
+          localStorage.setItem('gemini_api_key', val.geminiApiKey);
+          let input = document.getElementById('geminiApiKeyInput');
+          if (input) input.value = val.geminiApiKey;
+        }
+      });
+    }
+
+    function saveGeminiApiKey() {
+      const key = document.getElementById('geminiApiKeyInput').value.trim() || DEFAULT_GEMINI_KEY;
+      localStorage.setItem('gemini_api_key', key);
+      if (firebaseDb) {
+        firebaseDb.ref(`config_${currentClassCode}`).set({ geminiApiKey: key });
+      }
+      showToast("🎉 Đã lưu và đồng bộ Key AI cho toàn bộ nhóm thành công!", "success");
+    }
+
+    function renderTimetableImage() {
+      const rawData = localStorage.getItem(`timetable_${currentClassCode}`);
+      const container = document.getElementById('timetableDisplayArea');
+      if (!container) return;
+
+      let timetableData = { mobile: '', desktop: '' };
+      if (rawData) {
+        try {
+          timetableData = JSON.parse(rawData);
+        } catch(e) {
+          timetableData.desktop = rawData;
+        }
+      }
+
+      const isMobile = window.innerWidth <= 768;
+      const imgUrl = isMobile ? timetableData.mobile : timetableData.desktop;
+
+      if (imgUrl) {
+        container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; max-height:100%; border-radius:8px; object-fit:contain;" />`;
+      } else {
+        container.innerHTML = `<p style="color:var(--text-sub); font-size:0.75rem;">Chưa có ảnh TKB cho bản ${isMobile ? 'Điện thoại (9:16)' : 'Máy tính (16:9)'}. Hãy bấm nút tải phía trên để cập nhật.</p>`;
+      }
+    }
+
+    function handleTimetableFileUpload(input) {
+      if (!input.files || !input.files[0]) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        let rawData = localStorage.getItem(`timetable_${currentClassCode}`);
+        let timetableData = { mobile: '', desktop: '' };
+        if (rawData) {
+          try { timetableData = JSON.parse(rawData); } catch(err) {}
+        }
+
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          timetableData.mobile = e.target.result;
+        } else {
+          timetableData.desktop = e.target.result;
+        }
+
+        localStorage.setItem(`timetable_${currentClassCode}`, JSON.stringify(timetableData));
+        if (firebaseDb) {
+          firebaseDb.ref(`timetable_${currentClassCode}`).set(timetableData);
+        }
+
+        renderTimetableImage();
+        showToast(`🎉 Đã cập nhật TKB cho giao diện ${isMobile ? 'Điện thoại (9:16)' : 'Máy tính (16:9)'}!`, 'success');
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+
+    function updateStreakCount() {
+      if(!currentUser) return;
+      let streakKey = `streak_${currentUser.phone}`;
+      let today = new Date().toISOString().split('T')[0];
+      let data = JSON.parse(localStorage.getItem(streakKey) || '{"count": 1, "lastDate": ""}');
+      
+      if (data.lastDate) {
+        let last = new Date(data.lastDate);
+        let curr = new Date(today);
+        let diffDays = Math.round((curr - last) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) { data.count += 1; data.lastDate = today; }
+        else if (diffDays > 1) { data.count = 1; data.lastDate = today; }
+      } else {
+        data.lastDate = today; data.count = 1;
+      }
+      
+      localStorage.setItem(streakKey, JSON.stringify(data));
+      const badge = document.getElementById('streakCountText');
+      if(badge) badge.textContent = `🔥 ${data.count} Ngày`;
+    }
+
+    function showStreakInfo() {
+      let streakKey = `streak_${currentUser.phone}`;
+      let data = JSON.parse(localStorage.getItem(streakKey) || '{"count": 1}');
+      showToast(`🔥 Bạn đã duy trì chuỗi đăng nhập ${data.count} ngày liên tục!`, 'success');
+    }
+
+    function updateUserOnlineStatus() {
+      if(!currentUser) return;
+      let onlineDb = JSON.parse(localStorage.getItem(`online_${currentClassCode}`) || '{}');
+      onlineDb[currentUser.phone] = { name: currentUser.name + (currentUser.phone === ADMIN_PHONE ? ' [Admin]' : ''), time: Date.now() };
+      let now = Date.now();
+      Object.keys(onlineDb).forEach(k => { if(now - onlineDb[k].time > 30000) delete onlineDb[k]; });
+      localStorage.setItem(`online_${currentClassCode}`, JSON.stringify(onlineDb));
+      document.getElementById('onlineCountText').textContent = `🟢 ${Object.keys(onlineDb).length} Online`;
+    }
+
+    function openOnlineUsersModal() {
+      let onlineDb = JSON.parse(localStorage.getItem(`online_${currentClassCode}`) || '{}');
+      document.getElementById('onlineUsersList').innerHTML = Object.values(onlineDb).map(u => `<div style="padding:6px; border-bottom:1px solid rgba(150,150,150,0.15); display:flex; justify-content:space-between;"><span>🟢 <strong>${u.name}</strong></span></div>`).join('') || '<p style="color:var(--text-sub);">Chưa có ai online.</p>';
+      document.getElementById('onlineUsersModal').style.display = 'flex';
+    }
+
+    function cleanAiText(text) {
+      if (!text) return '';
+      return text
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/\\times/g, 'x')
+        .replace(/\\sqrt\{([^}]+)\}/g, 'căn bậc hai của $1')
+        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
+        .replace(/\$/g, '')
+        .replace(/\\/g, '');
+    }
+
+    async function callGeminiAPI(promptText, base64Image = null) {
+      let apiKey = (localStorage.getItem('gemini_api_key') || DEFAULT_GEMINI_KEY).trim();
+
+      const systemInstruction = {
+        parts: [{
+          text: `Bạn là trợ lý giải bài tập siêu tốc.
+QUY TẮC BẮT BUỘC:
+1. BẮT BUỘC trả lời bằng TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ, chuẩn chính tả.
+2. Trả lời ngắn gọn, rõ ràng, đi thẳng vào đáp án và các bước chính.
+3. CHỈ dùng văn bản thuần (plain text). KHÔNG sử dụng ký tự Markdown hay LaTeX.`
+        }]
+      };
+
+      const parts = [];
+      if (base64Image) {
+        const mimeMatch = base64Image.match(/^data:(image\/\w+);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '');
+        parts.push({ inline_data: { mime_type: mimeType, data: cleanBase64 } });
+      }
+      parts.push({ text: promptText || "Giải bài tập này ngắn gọn giúp tôi bằng tiếng Việt có dấu đầy đủ." });
+
+      const payload = {
+        system_instruction: systemInstruction,
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 512,
+          thinkingConfig: { thinkingBudget: 0 }
+        }
+      };
+
+      try {
+        let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+          let rawText = data.candidates[0].content.parts[0].text;
+          return { success: true, text: cleanAiText(rawText) };
+        }
+
+        if (data.error) {
+          let errMessage = data.error.message || `Lỗi HTTP ${response.status}`;
+          return { success: false, error: `❌ Lỗi máy chủ AI: ${errMessage}` };
+        }
+      } catch (err) {
+        return { success: false, error: `❌ Lỗi kết nối: ${err.message}` };
+      }
+
+      return { success: false, error: '❌ Không thể kết nối tới AI. Vui lòng kiểm tra lại Key!' };
+    }
+
+    async function processAIQueryAsync(rawQuery, base64Image = null) {
+      let query = rawQuery.replace(/@ai|hỏi ai|ai ơi|ai/gi, '').trim();
+      let apiResult = await callGeminiAPI(query, base64Image);
+      return apiResult.success ? apiResult.text : apiResult.error;
+    }
+
+    async function askAI() { 
+      const input = document.getElementById('aiQuestionInput'); 
+      const box = document.getElementById('aiResponseBox'); 
+      const query = input.value.trim();
+      if(!query) return showToast("Vui lòng nhập câu hỏi!", 'error'); 
+      box.innerHTML = `<p style="color:#a855f7;">🤖 AI đang xử lý siêu tốc...</p>`; 
+      let response = await processAIQueryAsync(query);
+      box.innerHTML = `<div style="color:var(--clock-color); font-weight:bold; margin-bottom:4px;">🤖 AI Phản Hồi:</div><div style="white-space:pre-wrap;">${response}</div>`; 
+      input.value = ''; 
+    }
+
+    function handleAiCameraUpload(input, context) {
+      if(!input.files || !input.files[0]) return;
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        let imgData = e.target.result;
+        if(context === 'focus') {
+          const container = document.getElementById('focusAiChatMessages');
+          const userDiv = document.createElement('div');
+          userDiv.className = 'chat-msg me';
+          userDiv.innerHTML = `<div class="chat-content-wrap"><span class="chat-info">Bạn</span><div class="chat-bubble"><img src="${imgData}" style="max-width:200px; border-radius:8px;" /><div>📷 Ảnh bài tập cần giải</div></div></div>`;
+          container.appendChild(userDiv); container.scrollTop = container.scrollHeight;
+
+          const loadingDiv = document.createElement('div');
+          loadingDiv.className = 'chat-msg ai';
+          loadingDiv.innerHTML = `<div class="chat-content-wrap"><span class="chat-info">🤖 AI Trợ Lý</span><div class="chat-bubble">📷 AI đang quét và giải bài tập siêu tốc...</div></div>`;
+          container.appendChild(loadingDiv); container.scrollTop = container.scrollHeight;
+
+          let aiReply = await processAIQueryAsync("Hãy đọc đề bài và giải cực kỳ ngắn gọn từng bước bằng tiếng Việt có dấu đầy đủ cho bài tập trong ảnh này.", imgData);
+          loadingDiv.querySelector('.chat-bubble').innerHTML = aiReply.replace(/\n/g, '<br>');
+          container.scrollTop = container.scrollHeight;
+        } else if(context === 'modal') {
+          const box = document.getElementById('aiResponseBox');
+          box.innerHTML = `<div style="margin-bottom:8px;"><img src="${imgData}" style="max-width:200px; border-radius:8px;" /></div><div style="color:#a855f7; font-weight:bold;">🤖 AI đang quét và giải bài tập siêu tốc...</div>`;
+          let aiReply = await processAIQueryAsync("Hãy đọc đề bài và giải cực kỳ ngắn gọn từng bước bằng tiếng Việt có dấu đầy đủ cho bài tập trong ảnh này.", imgData);
+          box.innerHTML = `<div style="margin-bottom:8px;"><img src="${imgData}" style="max-width:200px; border-radius:8px;" /></div><div style="color:var(--clock-color); font-weight:bold; margin-bottom:4px;">🤖 AI Giải Bài Tập Qua Ảnh:</div><div style="white-space:pre-wrap;">${aiReply}</div>`;
+        }
+        input.value = '';
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+
+    async function sendFocusAiMessage() {
+      const input = document.getElementById('focusAiInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const container = document.getElementById('focusAiChatMessages');
+      const userDiv = document.createElement('div');
+      userDiv.className = 'chat-msg me';
+      userDiv.innerHTML = `<div class="chat-content-wrap"><span class="chat-info">Bạn</span><div class="chat-bubble">${text}</div></div>`;
+      container.appendChild(userDiv);
+      input.value = ''; container.scrollTop = container.scrollHeight;
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'chat-msg ai';
+      loadingDiv.innerHTML = `<div class="chat-content-wrap"><span class="chat-info">🤖 AI Trợ Lý</span><div class="chat-bubble">🤖 AI đang suy nghĩ...</div></div>`;
+      container.appendChild(loadingDiv); container.scrollTop = container.scrollHeight;
+
+      let aiReply = await processAIQueryAsync(text);
+      loadingDiv.querySelector('.chat-bubble').innerHTML = aiReply.replace(/\n/g, '<br>');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function openMinigamesModal() {
+      document.getElementById('minigamesModal').style.display = 'flex';
+    }
+
+    function getGameData() {
+      let filterSubj = document.getElementById('gameSubjFilter').value;
+      let formulas = JSON.parse(localStorage.getItem(`formulas_${currentClassCode}`)) || initialClassFormulas;
+      if (filterSubj !== 'ALL') {
+        formulas = formulas.filter(f => f.subj === filterSubj);
+      }
+      return formulas;
+    }
+
+    function startMinigame(mode) {
+      currentGameData = getGameData();
+      if (!currentGameData || currentGameData.length === 0) {
+        return showToast("Chưa có đủ công thức/từ vựng để chơi! Vui lòng thêm dữ liệu ở tab Học Tập.", "error");
+      }
+
+      currentQuizIndex = 0;
+      currentGameScore = 0;
+
+      if (mode === 'flashcard') renderFlashcardGame();
+      else if (mode === 'quiz') renderQuizGame();
+      else if (mode === 'matching') renderMatchingGame();
+      else if (mode === 'tf') renderTrueFalseGame();
+      else if (mode === 'scramble') renderScrambleGame();
+      else if (mode === 'fill') renderFillBlankGame();
+    }
+
+    function renderFlashcardGame() {
+      isFlashcardFlipped = false;
+      let currentItem = currentGameData[currentQuizIndex];
+      const playArea = document.getElementById('gamePlayArea');
+
+      playArea.innerHTML = `
+        <div style="width:100%; max-width:400px;">
+          <div style="font-size:0.75rem; color:var(--text-sub); margin-bottom:8px;">Thẻ ${currentQuizIndex + 1} / ${currentGameData.length} (${currentItem.subj})</div>
+          <div class="flashcard" onclick="flipFlashcard()">
+            <div id="fcFront" style="font-size:1.1rem; font-weight:bold; color:var(--clock-color);">${currentItem.title}</div>
+            <div id="fcBack" style="display:none; font-size:0.9rem; color:#fff; white-space:pre-wrap; margin-top:10px;">${currentItem.content}</div>
+            <span style="font-size:0.65rem; color:var(--text-sub); position:absolute; bottom:8px;">Chạm vào thẻ để lật</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-primary" style="flex:1; background:#10b981;" onclick="nextFlashcard(true)">✅ Đã thuộc</button>
+            <button class="btn-primary" style="flex:1; background:#e11d48;" onclick="nextFlashcard(false)">❌ Chưa thuộc</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function flipFlashcard() {
+      const front = document.getElementById('fcFront');
+      const back = document.getElementById('fcBack');
+      if (!front || !back) return;
+      isFlashcardFlipped = !isFlashcardFlipped;
+      if (isFlashcardFlipped) {
+        front.style.display = 'none'; back.style.display = 'block';
+      } else {
+        front.style.display = 'block'; back.style.display = 'none';
+      }
+    }
+
+    function nextFlashcard(isRemembered) {
+      if (isRemembered) currentGameScore++;
+      currentQuizIndex++;
+      if (currentQuizIndex < currentGameData.length) {
+        renderFlashcardGame();
+      } else {
+        document.getElementById('gamePlayArea').innerHTML = `
+          <h3 style="color:#10b981; margin-bottom:6px;">🎉 HOÀN THÀNH BỘ THẺ!</h3>
+          <p style="font-size:0.85rem; margin-bottom:12px;">Bạn đã thuộc <strong>${currentGameScore}/${currentGameData.length}</strong> công thức/từ vựng.</p>
+          <button class="btn-primary" onclick="startMinigame('flashcard')">🔄 Chơi lại</button>
+        `;
+      }
+    }
+
+    function renderQuizGame() {
+      let currentItem = currentGameData[currentQuizIndex];
+      const playArea = document.getElementById('gamePlayArea');
+
+      let allFormulas = JSON.parse(localStorage.getItem(`formulas_${currentClassCode}`)) || initialClassFormulas;
+      let wrongOptions = allFormulas.filter(f => f.title !== currentItem.title).map(f => f.content);
+      wrongOptions = wrongOptions.sort(() => 0.5 - Math.random()).slice(0, 3);
+      
+      let options = [currentItem.content, ...wrongOptions].sort(() => 0.5 - Math.random());
+
+      playArea.innerHTML = `
+        <div style="width:100%; max-width:450px; text-align:left;">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-sub); margin-bottom:8px;">
+            <span>Câu ${currentQuizIndex + 1}/${currentGameData.length} (${currentItem.subj})</span>
+            <span>Điểm: <strong style="color:#f59e0b">${currentGameScore}</strong></span>
+          </div>
+          <div style="font-size:0.95rem; font-weight:bold; color:var(--clock-color); margin-bottom:12px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+            Hỏi: Nội dung nào dưới đây đúng cho: "<span style="color:#fff;">${currentItem.title}</span>"?
+          </div>
+          <div id="quizOptionsList">
+            ${options.map((opt) => `
+              <button class="quiz-option-btn" onclick="checkQuizAnswer(this, \`${opt.replace(/`/g, '\\`')}\`, \`${currentItem.content.replace(/`/g, '\\`')}\`)">${opt}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function checkQuizAnswer(btn, selectedOpt, correctOpt) {
+      let buttons = document.querySelectorAll('.quiz-option-btn');
+      buttons.forEach(b => b.disabled = true);
+
+      if (selectedOpt === correctOpt) {
+        btn.style.background = 'rgba(16, 185, 129, 0.4)';
+        btn.style.borderColor = '#10b981';
+        playSound('success');
+        currentGameScore += 10;
+      } else {
+        btn.style.background = 'rgba(225, 29, 72, 0.4)';
+        btn.style.borderColor = '#e11d48';
+        playSound('alarm');
+      }
+
+      setTimeout(() => {
+        currentQuizIndex++;
+        if (currentQuizIndex < currentGameData.length) {
+          renderQuizGame();
+        } else {
+          document.getElementById('gamePlayArea').innerHTML = `
+            <h3 style="color:#f59e0b; margin-bottom:6px;">🎉 HOÀN THÀNH TRẮC NGHIỆM!</h3>
+            <p style="font-size:0.85rem; margin-bottom:12px;">Tổng điểm đạt được: <strong style="color:#38bdf8; font-size:1.1rem;">${currentGameScore} Điểm</strong></p>
+            <button class="btn-primary" onclick="startMinigame('quiz')">🔄 Thử sức lại</button>
+          `;
+        }
+      }, 1000);
+    }
+
+    function renderMatchingGame() {
+      const playArea = document.getElementById('gamePlayArea');
+      let items = currentGameData.slice(0, 4);
+      if (items.length < 2) {
+        return playArea.innerHTML = `<p style="color:var(--text-sub);">Cần ít nhất 2 công thức/từ vựng để chơi ghép đôi!</p>`;
+      }
+
+      let titles = items.map(i => ({ id: i.id, text: i.title })).sort(() => 0.5 - Math.random());
+      let contents = items.map(i => ({ id: i.id, text: i.content })).sort(() => 0.5 - Math.random());
+
+      selectedMatchTitle = null;
+      selectedMatchContent = null;
+
+      playArea.innerHTML = `
+        <div style="width:100%; max-width:520px;">
+          <p style="font-size:0.75rem; color:var(--text-sub); margin-bottom:8px;">Bấm chọn 1 Cột Trái và 1 Cột Phải tương ứng để ghép cặp đúng!</p>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${titles.map(t => `<div class="match-btn" data-type="title" data-id="${t.id}" onclick="selectMatchCard(this)">${t.text}</div>`).join('')}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${contents.map(c => `<div class="match-btn" data-type="content" data-id="${c.id}" onclick="selectMatchCard(this)">${c.text}</div>`).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectMatchCard(elem) {
+      let type = elem.getAttribute('data-type');
+      if (type === 'title') {
+        document.querySelectorAll('.match-btn[data-type="title"]').forEach(b => b.classList.remove('selected'));
+        elem.classList.add('selected');
+        selectedMatchTitle = elem;
+      } else {
+        document.querySelectorAll('.match-btn[data-type="content"]').forEach(b => b.classList.remove('selected'));
+        elem.classList.add('selected');
+        selectedMatchContent = elem;
+      }
+
+      if (selectedMatchTitle && selectedMatchContent) {
+        if (selectedMatchTitle.getAttribute('data-id') === selectedMatchContent.getAttribute('data-id')) {
+          selectedMatchTitle.classList.remove('selected');
+          selectedMatchContent.classList.remove('selected');
+          selectedMatchTitle.classList.add('correct');
+          selectedMatchContent.classList.add('correct');
+          playSound('success');
+
+          selectedMatchTitle = null;
+          selectedMatchContent = null;
+
+          if (document.querySelectorAll('.match-btn.correct').length === document.querySelectorAll('.match-btn').length) {
+            setTimeout(() => {
+              document.getElementById('gamePlayArea').innerHTML = `
+                <h3 style="color:#10b981; margin-bottom:6px;">🎉 TUYỆT VỜI! ĐÃ GHÉP ĐÚNG TẤT CẢ!</h3>
+                <button class="btn-primary" onclick="startMinigame('matching')">🔄 Chơi ván mới</button>
+              `;
+            }, 600);
+          }
+        } else {
+          playSound('alarm');
+          setTimeout(() => {
+            if(selectedMatchTitle) selectedMatchTitle.classList.remove('selected');
+            if(selectedMatchContent) selectedMatchContent.classList.remove('selected');
+            selectedMatchTitle = null;
+            selectedMatchContent = null;
+          }, 400);
+        }
+      }
+    }
+
+    let currentTfIsCorrect = false;
+    function renderTrueFalseGame() {
+      let currentItem = currentGameData[currentQuizIndex];
+      const playArea = document.getElementById('gamePlayArea');
+
+      let allFormulas = JSON.parse(localStorage.getItem(`formulas_${currentClassCode}`)) || initialClassFormulas;
+      currentTfIsCorrect = Math.random() < 0.5;
+
+      let displayedContent = currentItem.content;
+      if (!currentTfIsCorrect) {
+        let wrongItems = allFormulas.filter(f => f.title !== currentItem.title);
+        if (wrongItems.length > 0) {
+          displayedContent = wrongItems[Math.floor(Math.random() * wrongItems.length)].content;
+        } else {
+          currentTfIsCorrect = true;
+        }
+      }
+
+      playArea.innerHTML = `
+        <div style="width:100%; max-width:420px; text-align:center;">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-sub); margin-bottom:8px;">
+            <span>Câu ${currentQuizIndex + 1}/${currentGameData.length}</span>
+            <span>Điểm: <strong style="color:#f43f5e;">${currentGameScore}</strong></span>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(150,150,150,0.2); border-radius:12px; padding:14px; margin-bottom:14px;">
+            <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:4px;">Cặp nội dung ghép sẵn:</div>
+            <div style="font-size:1rem; font-weight:bold; color:var(--clock-color); margin-bottom:6px;">"${currentItem.title}"</div>
+            <div style="font-size:1.1rem; color:#fff; font-weight:bold; background:rgba(255,255,255,0.08); padding:8px; border-radius:8px;">${displayedContent}</div>
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <button class="btn-primary" style="flex:1; background:#10b981; padding:12px; font-size:0.9rem;" onclick="checkTfAnswer(true)">⭕ ĐÚNG</button>
+            <button class="btn-primary" style="flex:1; background:#f43f5e; padding:12px; font-size:0.9rem;" onclick="checkTfAnswer(false)">❌ SAI</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function checkTfAnswer(userChoice) {
+      if (userChoice === currentTfIsCorrect) {
+        playSound('success');
+        currentGameScore += 10;
+        showToast("🎉 Tốt lắm! Đáp án chuẩn xác.", "success");
+      } else {
+        playSound('alarm');
+        showToast("❌ Sai mất rồi!", "error");
+      }
+
+      currentQuizIndex++;
+      if (currentQuizIndex < currentGameData.length) {
+        renderTrueFalseGame();
+      } else {
+        document.getElementById('gamePlayArea').innerHTML = `
+          <h3 style="color:#f43f5e; margin-bottom:6px;">⚡ HOÀN THÀNH THỬ THÁCH PHẢN XẠ!</h3>
+          <p style="font-size:0.85rem; margin-bottom:12px;">Điểm số của bạn: <strong style="color:#38bdf8; font-size:1.2rem;">${currentGameScore} Điểm</strong></p>
+          <button class="btn-primary" onclick="startMinigame('tf')">🔄 Thử lại ngay</button>
+        `;
+      }
+    }
+
+    function renderScrambleGame() {
+      let currentItem = currentGameData[currentQuizIndex];
+      const playArea = document.getElementById('gamePlayArea');
+
+      let words = currentItem.content.split(/\s+/).filter(w => w.length > 0);
+      let scrambled = [...words].sort(() => 0.5 - Math.random());
+      selectedScrambleWords = [];
+
+      playArea.innerHTML = `
+        <div style="width:100%; max-width:480px; text-align:center;">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-sub); margin-bottom:8px;">
+            <span>Câu ${currentQuizIndex + 1}/${currentGameData.length} (${currentItem.subj})</span>
+            <span>Điểm: <strong style="color:#eab308;">${currentGameScore}</strong></span>
+          </div>
+
+          <div style="font-size:0.9rem; font-weight:bold; color:var(--clock-color); margin-bottom:8px;">
+            Sắp xếp mảnh từ ghép thành công thức cho: "<span style="color:#fff;">${currentItem.title}</span>"
+          </div>
+
+          <div id="scrambleAnswerBox" style="min-height:48px; background:rgba(0,0,0,0.3); border:2px dashed var(--accent-primary); border-radius:10px; padding:8px; margin-bottom:10px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:center;">
+            <span style="font-size:0.75rem; color:var(--text-sub);" id="scramblePlaceholder">Chạm vào mảnh từ bên dưới để xếp vào đây...</span>
+          </div>
+
+          <div id="scrambleChipsBox" style="margin-bottom:12px;">
+            ${scrambled.map((w, idx) => `<span class="scramble-chip" data-idx="${idx}" onclick="clickScrambleChip(this, \`${w.replace(/`/g, '\\`')}\`)">${w}</span>`).join('')}
+          </div>
+
+          <div style="display:flex; gap:6px;">
+            <button class="btn-primary" style="flex:1; background:#10b981;" onclick="checkScrambleAnswer(\`${currentItem.content.replace(/`/g, '\\`')}\`)">✔️ Kiểm Tra</button>
+            <button class="top-btn" style="background:#e11d48; color:#fff;" onclick="renderScrambleGame()">🔄 Xóa Làm Lại</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function clickScrambleChip(elem, word) {
+      elem.classList.add('used');
+      selectedScrambleWords.push(word);
+
+      const placeholder = document.getElementById('scramblePlaceholder');
+      if (placeholder) placeholder.style.display = 'none';
+
+      const box = document.getElementById('scrambleAnswerBox');
+      const chip = document.createElement('span');
+      chip.className = 'scramble-chip';
+      chip.style.background = 'rgba(99, 102, 241, 0.4)';
+      chip.textContent = word;
+      box.appendChild(chip);
+      playSound('click');
+    }
+
+    function checkScrambleAnswer(correctContent) {
+      let userSentence = selectedScrambleWords.join(' ').trim();
+      let targetSentence = correctContent.replace(/\n/g, ' ').trim();
+
+      if (userSentence === targetSentence) {
+        playSound('success');
+        currentGameScore += 15;
+        showToast("🎉 Tuyệt vời! Xếp từ hoàn toàn chính xác.", "success");
+
+        setTimeout(() => {
+          currentQuizIndex++;
+          if (currentQuizIndex < currentGameData.length) {
+            renderScrambleGame();
+          } else {
+            document.getElementById('gamePlayArea').innerHTML = `
+              <h3 style="color:#eab308; margin-bottom:6px;">🎉 HOÀN THÀNH SẮP XẾP CÔNG THỨC!</h3>
+              <p style="font-size:0.85rem; margin-bottom:12px;">Điểm số đạt được: <strong style="color:#38bdf8; font-size:1.2rem;">${currentGameScore} Điểm</strong></p>
+              <button class="btn-primary" onclick="startMinigame('scramble')">🔄 Chơi ván mới</button>
+            `;
+          }
+        }, 800);
+      } else {
+        playSound('alarm');
+        showToast("❌ Chưa chính xác, hãy bấm 'Xóa Làm Lại' để thử lại!", "error");
+      }
+    }
+
+    function renderFillBlankGame() {
+      let currentItem = currentGameData[currentQuizIndex];
+      const playArea = document.getElementById('gamePlayArea');
+
+      playArea.innerHTML = `
+        <div style="width:100%; max-width:420px; text-align:center;">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-sub); margin-bottom:8px;">
+            <span>Câu ${currentQuizIndex + 1}/${currentGameData.length}</span>
+            <span>Điểm: <strong style="color:#06b6d4;">${currentGameScore}</strong></span>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(150,150,150,0.2); border-radius:12px; padding:12px; margin-bottom:12px; text-align:left;">
+            <div style="font-size:0.75rem; color:var(--text-sub);">Gợi ý tên công thức/từ vựng:</div>
+            <div style="font-size:0.95rem; font-weight:bold; color:var(--clock-color); margin-bottom:8px;">${currentItem.title}</div>
+            <div style="font-size:0.75rem; color:var(--text-sub);">Hãy gõ chính xác hoặc điền nội dung công thức còn thiếu:</div>
+          </div>
+
+          <input type="text" id="fillBlankInput" placeholder="Nhập nội dung/định nghĩa đúng vào đây..." style="width:100%; padding:10px; font-size:0.85rem; margin-bottom:10px;" onkeyup="if(event.key==='Enter') checkFillBlankAnswer(\`${currentItem.content.replace(/`/g, '\\`')}\`)" />
+
+          <button class="btn-primary" style="width:100%; background:#06b6d4; padding:10px;" onclick="checkFillBlankAnswer(\`${currentItem.content.replace(/`/g, '\\`')}\`)">🚀 Gửi Đáp Án</button>
+        </div>
+      `;
+    }
+
+    function checkFillBlankAnswer(correctContent) {
+      const input = document.getElementById('fillBlankInput');
+      if (!input) return;
+      let userText = input.value.trim().toLowerCase();
+      let targetText = correctContent.trim().toLowerCase();
+
+      if (userText && (targetText.includes(userText) || userText.includes(targetText))) {
+        playSound('success');
+        currentGameScore += 20;
+        showToast("🎉 Tuyệt vời! Nhập đáp án rất chuẩn.", "success");
+      } else {
+        playSound('alarm');
+        showToast(`❌ Chưa chính xác! Đáp án đúng là: ${correctContent}`, "error");
+      }
+
+      currentQuizIndex++;
+      if (currentQuizIndex < currentGameData.length) {
+        setTimeout(renderFillBlankGame, 1200);
+      } else {
+        setTimeout(() => {
+          document.getElementById('gamePlayArea').innerHTML = `
+            <h3 style="color:#06b6d4; margin-bottom:6px;">🎉 HOÀN THÀNH CHỦ ĐỀ ĐIỀN TỪ!</h3>
+            <p style="font-size:0.85rem; margin-bottom:12px;">Điểm số đạt được: <strong style="color:#38bdf8; font-size:1.2rem;">${currentGameScore} Điểm</strong></p>
+            <button class="btn-primary" onclick="startMinigame('fill')">🔄 Chơi lại ván khác</button>
+          `;
+        }, 1200);
+      }
+    }
+
+    function promptStopStudySession() {
+      document.getElementById('stopStudyPassInput').value = '';
+      document.getElementById('passConfirmModal').style.display = 'flex';
+      setTimeout(() => {
+        const inp = document.getElementById('stopStudyPassInput');
+        if(inp) inp.focus();
+      }, 100);
+    }
+
+    function closePassConfirmModal() {
+      document.getElementById('passConfirmModal').style.display = 'none';
+    }
+
+    function verifyStopStudyPass() {
+      const passInput = document.getElementById('stopStudyPassInput').value.trim();
+      if (!passInput) return showToast("Vui lòng nhập mật khẩu!", "error");
+      
+      if (currentUser && passInput === currentUser.pass) {
+        closePassConfirmModal();
+        playSound('success');
+        document.getElementById('focusExitOptionsModal').style.display = 'flex';
+      } else {
+        playSound('alarm');
+        showToast("❌ Sai mật khẩu! Không thể dừng phiên học.", "error");
+      }
+    }
+
+    function confirmExitFocusToHome() {
+      document.getElementById('focusExitOptionsModal').style.display = 'none';
+      exitStudySessionToDashboard();
+      showToast("🏠 Đã trở về màn hình chính!", "info");
+    }
+
+    function confirmExitFocusToLogout() {
+      document.getElementById('focusExitOptionsModal').style.display = 'none';
+      exitStudySessionToDashboard();
+      logoutUser();
+      showToast("🚪 Đăng xuất ứng dụng!", "info");
+    }
+
+    function openFocusDocPopup() {
+      let docs = JSON.parse(localStorage.getItem(`docs_${currentClassCode}`) || '[]');
+      const container = document.getElementById('standaloneDocContainer');
+      container.innerHTML = docs.length === 0 ? `<p style="color:var(--text-sub); text-align:center; padding:20px;">Chưa có tài liệu nào trong kho chung.</p>` : docs.map(d => `
+        <div style="background:rgba(0,0,0,0.06); border:1px solid rgba(150,150,150,0.15); border-radius:8px; padding:8px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div style="min-width:0; flex:1;"><strong style="color:var(--clock-color); font-size:0.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">📄 ${d.name}</strong><div style="font-size:0.65rem; color:var(--text-sub);">Người tải: ${d.uploader}</div></div>
+          <div style="display:flex; gap:4px; flex-shrink:0;">
+            <button class="top-btn" style="background:#10b981; color:#fff; font-size:0.7rem;" onclick="previewDocument(${d.id})">👁️ Xem</button>
+            <a href="${d.data}" download="${d.name}" class="top-btn" style="background:#0284c7; color:#fff; text-decoration:none; padding:4px 8px; font-size:0.7rem;">⬇ Tải</a>
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('standaloneDocModal').style.display = 'flex';
+    }
+
+    function handleTimeSelectChange(elem) {
+      const customInput = document.getElementById('customMinutesInput');
+      if (elem.value === 'custom') {
+        customInput.style.display = 'inline-block'; customInput.focus();
+        if(customInput.value) updateCustomTimeDisplay(customInput.value);
+      } else {
+        customInput.style.display = 'none'; totalMinutes = parseInt(elem.value);
+        timeLeft = totalMinutes * 60;
+        let formatted = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+        document.getElementById('mainTabTimerDisplay').textContent = formatted;
+      }
+    }
+
+    function updateCustomTimeDisplay(val) {
+      let mins = parseInt(val);
+      if(mins && mins > 0) {
+        totalMinutes = mins; timeLeft = totalMinutes * 60;
+        let formatted = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+        document.getElementById('mainTabTimerDisplay').textContent = formatted;
+      }
+    }
+
+    function startStudySession() {
+      const timeSelect = document.getElementById('timeSelect');
+      if(timeSelect.value === 'custom') {
+        const customVal = parseInt(document.getElementById('customMinutesInput').value);
+        if(!customVal || customVal <= 0) return showToast("Vui lòng nhập số phút tùy chỉnh hợp lệ!", 'error');
+        totalMinutes = customVal;
+      } else {
+        totalMinutes = parseInt(timeSelect.value);
+      }
+      
+      timeLeft = totalMinutes * 60;
+      let formatted = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+      document.getElementById('timerDisplay').textContent = formatted;
+      document.getElementById('mainTabTimerDisplay').textContent = formatted;
+
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(err => {});
+      }
+      document.getElementById('studyScreen').style.display = 'flex';
+
+      if(timerId) clearInterval(timerId);
+      timerId = setInterval(() => {
+        timeLeft--;
+        let f = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+        document.getElementById('timerDisplay').textContent = f;
+        document.getElementById('mainTabTimerDisplay').textContent = f;
+        
+        if(timeLeft <= 0) { 
+          clearInterval(timerId); 
+          playSound('alarm');
+          showToast("🎉 Chúc mừng bạn đã hoàn thành phiên học!", 'success'); 
+          exitStudySessionToDashboard();
+        }
+      }, 1000);
+    }
+
+    function exitStudySessionToDashboard() {
+      if(timerId) clearInterval(timerId);
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {});
+      }
+      document.getElementById('studyScreen').style.display = 'none';
+      const timeSelect = document.getElementById('timeSelect');
+      if(timeSelect.value !== 'custom') {
+        totalMinutes = parseInt(timeSelect.value) || 45;
+      }
+      timeLeft = totalMinutes * 60;
+      let formatted = `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+      document.getElementById('mainTabTimerDisplay').textContent = formatted;
+    }
+
+    function loadCustomMusic() {
+      let url = document.getElementById('musicUrlInput').value.trim();
+      if(!url) return showToast("Vui lòng dán link YouTube hoặc Spotify!", 'error');
+      let iframe = document.getElementById('musicIframe');
+      
+      if(url.includes('youtube.com') || url.includes('youtu.be')) {
+        let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        let match = url.match(regExp);
+        let videoId = (match && match[2].length === 11) ? match[2] : null;
+        if(videoId) {
+          iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+          showToast("▶ Đang phát video YouTube!", 'success');
+        } else {
+          showToast("Link YouTube không hợp lệ!", 'error');
+        }
+      } else if(url.includes('spotify.com')) {
+        let spotifyEmbed = url.replace('open.spotify.com/', 'open.spotify.com/embed/');
+        iframe.src = spotifyEmbed;
+        showToast("▶ Đang phát danh sách Spotify!", 'success');
+      } else {
+        iframe.src = url;
+      }
+    }
+
+    function playPresetMusic(type) {
+      let iframe = document.getElementById('musicIframe');
+      if(type === 'lofi') {
+        iframe.src = "https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1";
+      } else if(type === 'spotify') {
+        iframe.src = "https://open.spotify.com/embed/playlist/37i9dQZF1DX8NTLI29BXZa";
+      } else if(type === 'piano') {
+        iframe.src = "https://www.youtube.com/embed/4oStw0r0vis?autoplay=1";
+      }
+      showToast("▶ Đã bật nhạc nền thành công!", 'success');
+    }
+
+    function openDiscordVoiceModal() { document.getElementById('discordVoiceModal').style.display = 'flex'; }
+    async function toggleCameraStream() {
+      const videoElem = document.getElementById('myCameraFeed'); const tagLabel = document.getElementById('myUserTagLabel'); const btn = document.getElementById('btnToggleCam');
+      if (!isCamActive) {
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          videoElem.srcObject = localStream; isCamActive = true; btn.style.background = '#e11d48'; btn.textContent = '⏹️ Tắt Camera'; tagLabel.textContent = `${currentUser.name} (Đang bật Cam 📷)`;
+        } catch (err) { showToast('Không thể kết nối đến Camera!', 'error'); }
+      } else {
+        if (localStream) localStream.getTracks().forEach(track => track.stop());
+        videoElem.srcObject = null; isCamActive = false; btn.style.background = '#0284c7'; btn.textContent = '📷 Bật Camera'; tagLabel.textContent = `${currentUser.name} (Chưa bật Cam)`;
+      }
+    }
+
+    async function toggleScreenShare() {
+      const grid = document.getElementById('discordVideoGrid'); const btn = document.getElementById('btnToggleScreen');
+      if (!isScreenSharing) {
+        try {
+          screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          let screenCard = document.getElementById('screenShareCard');
+          if (!screenCard) {
+            screenCard = document.createElement('div'); screenCard.className = 'discord-user-card'; screenCard.id = 'screenShareCard';
+            screenCard.innerHTML = `<video id="screenShareVideoFeed" autoplay playsinline class="discord-video"></video><div class="discord-user-tag">🖥️ Màn Hình Của ${currentUser.name}</div>`;
+            grid.appendChild(screenCard);
+          }
+          document.getElementById('screenShareVideoFeed').srcObject = screenStream; isScreenSharing = true; btn.style.background = '#e11d48'; btn.textContent = '⏹️ Dừng Chia Sẻ';
+          screenStream.getVideoTracks()[0].onended = () => stopScreenSharing();
+        } catch (err) {}
+      } else { stopScreenSharing(); }
+    }
+
+    function stopScreenSharing() {
+      if (screenStream) screenStream.getTracks().forEach(track => track.stop());
+      const card = document.getElementById('screenShareCard'); if (card) card.remove();
+      isScreenSharing = false; const btn = document.getElementById('btnToggleScreen'); if (btn) { btn.style.background = '#a855f7'; btn.textContent = '🖥️ Chia Sẻ Màn Hình'; }
+    }
+
+    function leaveDiscordVoice() {
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
+      if (screenStream) screenStream.getTracks().forEach(track => track.stop());
+      document.getElementById('myCameraFeed').srcObject = null; isCamActive = false; isScreenSharing = false;
+      const btnCam = document.getElementById('btnToggleCam'); if (btnCam) { btnCam.style.background = '#0284c7'; btnCam.textContent = '📷 Bật Camera'; }
+      const card = document.getElementById('screenShareCard'); if (card) card.remove();
+      document.getElementById('discordVoiceModal').style.display = 'none';
+    }
+
+    function switchChatSubTab(tabName) {
+      const btnChat = document.getElementById('btnSubTabChat');
+      const btnDocs = document.getElementById('btnSubTabDocs');
+      const paneChat = document.getElementById('subPaneChat');
+      const paneDocs = document.getElementById('subPaneDocs');
+
+      if (tabName === 'chat') {
+        btnChat.classList.add('active'); btnDocs.classList.remove('active');
+        paneChat.style.cssText = 'display: flex !important; flex: 1; flex-direction: column;';
+        paneDocs.style.cssText = 'display: none !important;';
+        renderChat();
+      } else {
+        btnDocs.classList.add('active'); btnChat.classList.remove('active');
+        paneChat.style.cssText = 'display: none !important;';
+        paneDocs.style.cssText = 'display: flex !important; flex: 1; flex-direction: column; min-height:0; background:rgba(0,0,0,0.05); border-radius:10px; padding:10px; border:1px solid rgba(150,150,150,0.15);';
+        renderMainDocumentList();
+      }
+    }
+
+    function previewDocument(id) {
+      let docs = JSON.parse(localStorage.getItem(`docs_${currentClassCode}`) || '[]');
+      let doc = docs.find(d => d.id === id);
+      if(!doc) return showToast("Không tìm thấy file!", 'error');
+      
+      document.getElementById('previewDocTitle').textContent = `👁️ ${doc.name}`;
+      const body = document.getElementById('docPreviewBody');
+      
+      if(doc.data.startsWith('data:image/')) {
+        body.innerHTML = `<img src="${doc.data}" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px;" />`;
+      } else if(doc.data.startsWith('data:application/pdf')) {
+        body.innerHTML = `<iframe src="${doc.data}" style="width:100%; height:100%; border:none; border-radius:8px;"></iframe>`;
+      } else {
+        body.innerHTML = `<div style="text-align:center; padding:20px; width:100%; height:100%; flex-direction:column; display:flex;"><p style="font-size:0.9rem; color:var(--clock-color); margin-bottom:10px;">📄 ${doc.name} (${doc.size})</p><iframe src="${doc.data}" style="width:100%; flex:1; border:1px solid rgba(150,150,150,0.2); border-radius:8px; background:#fff;"></iframe></div>`;
+      }
+      document.getElementById('docPreviewModal').style.display = 'flex';
+    }
+
+    function handleDocumentUpload(input) {
+      if(!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        let docs = JSON.parse(localStorage.getItem(`docs_${currentClassCode}`) || '[]');
+        let newDoc = { id: Date.now(), name: file.name, size: (file.size/1024).toFixed(1) + ' KB', data: e.target.result, uploader: currentUser.name };
+        docs.unshift(newDoc);
+        localStorage.setItem(`docs_${currentClassCode}`, JSON.stringify(docs));
+
+        input.value = ''; renderMainDocumentList(); playSound('success');
+        showToast("🎉 Đã tải lên và lưu vào Kho tài liệu chung!", 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderMainDocumentList() {
+      let docs = JSON.parse(localStorage.getItem(`docs_${currentClassCode}`) || '[]');
+      const container = document.getElementById('mainDocumentListContainer');
+      if(!container) return;
+      container.innerHTML = docs.length === 0 ? `<p style="color:var(--text-sub); text-align:center; padding:20px;">Chưa có tài liệu nào trong kho chung.</p>` : docs.map(d => `
+        <div style="background:rgba(0,0,0,0.06); border:1px solid rgba(150,150,150,0.15); border-radius:8px; padding:8px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div style="min-width:0; flex:1;"><strong style="color:var(--clock-color); font-size:0.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">📄 ${d.name}</strong><div style="font-size:0.65rem; color:var(--text-sub);">Dung lượng: ${d.size} • Người tải: ${d.uploader}</div></div>
+          <div style="display:flex; gap:4px; flex-shrink:0;">
+            <button class="top-btn" style="background:#10b981; color:#fff; font-size:0.7rem;" onclick="previewDocument(${d.id})">👁️ Xem</button>
+            <a href="${d.data}" download="${d.name}" class="top-btn" style="background:#0284c7; color:#fff; text-decoration:none; padding:4px 8px; font-size:0.7rem;">⬇ Tải về</a>
+            <button class="top-btn" style="background:#e11d48; color:#fff; padding:4px 8px; font-size:0.7rem;" onclick="deleteDocument(${d.id})">✖</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function deleteDocument(id) {
+      let key = `docs_${currentClassCode}`;
+      let docs = JSON.parse(localStorage.getItem(key) || '[]').filter(d => d.id !== id);
+      localStorage.setItem(key, JSON.stringify(docs)); renderMainDocumentList();
+    }
+
+    function handleChatFileSelect(input, type) { 
+      if(!input.files || !input.files[0]) return; 
+      const file = input.files[0]; const reader = new FileReader(); 
+      reader.onload = function(e) { 
+        let msgs = JSON.parse(localStorage.getItem(`chat_${currentClassCode}`) || '[]'); 
+        let newMsg = { id: Date.now(), author: currentUser.name, phone: currentUser.phone, type, fileData: e.target.result, fileName: file.name, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+        msgs.push(newMsg); 
+        localStorage.setItem(`chat_${currentClassCode}`, JSON.stringify(msgs)); 
+        if (firebaseDb) firebaseDb.ref(`chat_${currentClassCode}`).set(msgs);
+        input.value = ''; renderChat(); 
+      }; 
+      reader.readAsDataURL(file); 
+    }
+
+    function updateSystemVolume(type, val) {
+      if(type === 'music') document.getElementById('labelVolMusic').textContent = `${val}%`;
+      if(type === 'notify') document.getElementById('labelVolNotify').textContent = `${val}%`;
+      if(type === 'voice') document.getElementById('labelVolVoice').textContent = `${val}%`;
+    }
+
+    function changeTheme(theme) {
+      const root = document.documentElement; document.body.style.backgroundImage = 'none';
+      document.body.classList.remove('has-custom-bg');
+      localStorage.removeItem('custom_app_bg'); localStorage.setItem('saved_preset_theme', theme);
+
+      if (theme === 'light') {
+        root.style.setProperty('--bg-workspace', '#f1f5f9'); root.style.setProperty('--card-bg', 'rgba(255, 255, 255, 0.9)'); root.style.setProperty('--accent-primary', '#4f46e5'); root.style.setProperty('--clock-color', '#0284c7'); root.style.setProperty('--text-main', '#0f172a'); root.style.setProperty('--text-sub', '#475569'); root.style.setProperty('--input-bg', 'rgba(241, 245, 249, 0.9)');
+      } else if (theme === 'pastel') {
+        root.style.setProperty('--bg-workspace', '#fce7f3'); root.style.setProperty('--card-bg', 'rgba(255, 241, 242, 0.9)'); root.style.setProperty('--accent-primary', '#ec4899'); root.style.setProperty('--clock-color', '#db2777'); root.style.setProperty('--text-main', '#831843'); root.style.setProperty('--text-sub', '#9d174d'); root.style.setProperty('--input-bg', 'rgba(253, 242, 248, 0.9)');
+      } else if (theme === 'cyber') {
+        root.style.setProperty('--bg-workspace', '#0d0221'); root.style.setProperty('--card-bg', 'rgba(38, 20, 71, 0.85)'); root.style.setProperty('--accent-primary', '#d946ef'); root.style.setProperty('--clock-color', '#f43f5e'); root.style.setProperty('--text-main', '#f8fafc'); root.style.setProperty('--text-sub', '#94a3b8'); root.style.setProperty('--input-bg', 'rgba(15, 23, 42, 0.75)');
+      } else if (theme === 'emerald') {
+        root.style.setProperty('--bg-workspace', '#064e3b'); root.style.setProperty('--card-bg', 'rgba(6, 78, 59, 0.85)'); root.style.setProperty('--accent-primary', '#10b981'); root.style.setProperty('--clock-color', '#34d399'); root.style.setProperty('--text-main', '#f8fafc'); root.style.setProperty('--text-sub', '#94a3b8'); root.style.setProperty('--input-bg', 'rgba(15, 23, 42, 0.75)');
+      } else {
+        root.style.setProperty('--bg-workspace', '#0f172a'); root.style.setProperty('--card-bg', 'rgba(30, 41, 59, 0.85)'); root.style.setProperty('--accent-primary', '#6366f1'); root.style.setProperty('--clock-color', '#38bdf8'); root.style.setProperty('--text-main', '#f8fafc'); root.style.setProperty('--text-sub', '#94a3b8'); root.style.setProperty('--input-bg', 'rgba(15, 23, 42, 0.75)');
+      }
+      showToast("🎨 Đã áp dụng chủ đề màu giao diện thành công!", 'success');
+    }
+
+    function handleCustomBgUpload(input) {
+      if(!input.files || !input.files[0]) return; const reader = new FileReader();
+      reader.onload = function(e) { 
+        document.body.style.backgroundImage = `url('${e.target.result}')`; 
+        document.body.classList.add('has-custom-bg');
+        localStorage.setItem('custom_app_bg', e.target.result); 
+        showToast("🎉 Đã thay đổi hình nền thành công!", 'success'); 
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+
+    function handleCustomFrameUpload(input) {
+      if(!input.files || !input.files[0]) return; const reader = new FileReader();
+      reader.onload = function(e) { const wrapper = document.getElementById('appFrameWrapper'); wrapper.style.border = "12px solid transparent"; wrapper.style.borderImage = `url('${e.target.result}') 30 round`; localStorage.setItem('custom_app_frame', e.target.result); showToast("🎉 Đã đặt ảnh khung viền xung quanh!", 'success'); };
+      reader.readAsDataURL(input.files[0]);
+    }
+
+    function loadSavedThemeOrBg() {
+      let bg = localStorage.getItem('custom_app_bg');
+      if(bg) { 
+        document.body.style.backgroundImage = `url('${bg}')`; 
+        document.body.classList.add('has-custom-bg');
+      } else { 
+        let presetTheme = localStorage.getItem('saved_preset_theme'); 
+        if(presetTheme) changeTheme(presetTheme); 
+      }
+    }
+
+    function loadSavedCustomFrame() {
+      let frameImg = localStorage.getItem('custom_app_frame');
+      if (frameImg) { const wrapper = document.getElementById('appFrameWrapper'); wrapper.style.border = "12px solid transparent"; wrapper.style.borderImage = `url('${frameImg}') 30 round`; }
+    }
+
+    function resetCustomBg() { 
+      document.body.style.backgroundImage = 'none'; 
+      document.body.classList.remove('has-custom-bg');
+      localStorage.removeItem('custom_app_bg'); 
+      changeTheme('dark'); 
+    }
+    function resetCustomFrame() { const wrapper = document.getElementById('appFrameWrapper'); wrapper.style.border = "0px solid transparent"; localStorage.removeItem('custom_app_frame'); showToast("Đã khôi phục viền màn hình mặc định!"); }
+
+    function updateProfileInfo() {
+      const newName = document.getElementById('editProfileNameInput').value.trim(); const newPass = document.getElementById('editProfilePassInput').value.trim();
+      if(!newName && !newPass) return showToast("Nhập họ tên hoặc mật khẩu mới!", 'error');
+      let db = JSON.parse(localStorage.getItem('app_users_db') || '{}');
+      if(newName) currentUser.name = newName; if(newPass) currentUser.pass = newPass;
+      db[currentUser.phone] = currentUser; localStorage.setItem('app_users_db', JSON.stringify(db));
+      if(localStorage.getItem('app_user_remembered')) localStorage.setItem('app_user_remembered', JSON.stringify(currentUser));
+      if(sessionStorage.getItem('app_user_session')) sessionStorage.setItem('app_user_session', JSON.stringify(currentUser));
+      document.getElementById('profileName').textContent = currentUser.name; document.getElementById('editProfileNameInput').value = ''; document.getElementById('editProfilePassInput').value = '';
+      showToast("🎉 Cập nhật thông tin thành công!", 'success');
+    }
+
+    function selectSubject(subj) {
+      currentSubject = subj;
+      document.querySelectorAll('.subject-btn').forEach(b => { b.classList.remove('active'); if(b.textContent.includes(subj)) b.classList.add('active'); });
+      
+      const badge = document.getElementById('personalDataBadge'); 
+      const sectionTitle = document.getElementById('vocabSectionTitle'); 
+      const btnEditChap = document.getElementById('btnEditChapter'); 
+      const vanUploadArea = document.getElementById('vanUploadArea');
+      
+      document.querySelectorAll('.selectedSubjTitle').forEach(el => el.textContent = subj);
+
+      if (subj === 'Cá Nhân') {
+        badge.style.display = 'inline-block'; 
+        sectionTitle.innerHTML = '🔒 Thêm Ghi Chú / Từ Vựng Riêng:'; 
+        sectionTitle.style.color = '#f43f5e'; 
+        btnEditChap.style.display = 'none'; 
+        if (vanUploadArea) vanUploadArea.style.display = 'none';
+      } else {
+        badge.style.display = 'none'; 
+        sectionTitle.innerHTML = `📖 Thêm Nhanh Từ Vựng / Công Thức (<span class="selectedSubjTitle">${subj}</span>):`; 
+        sectionTitle.style.color = '#f59e0b'; 
+        btnEditChap.style.display = 'inline-block'; 
+        if (vanUploadArea) vanUploadArea.style.display = (subj === 'Văn') ? 'block' : 'none';
+      }
+      
+      renderChapterDropdown(); 
+      renderInlineSubjectFormulas();
+    }
+
+    function addQuickKnowledge() {
+      const titleEl = document.getElementById('quickTitleInput'); 
+      const contentEl = document.getElementById('quickContentInput'); 
+      if(!titleEl || !contentEl) return;
+      
+      const title = titleEl.value.trim(); 
+      const content = contentEl.value.trim(); 
+      
+      if(!title || !content) {
+          return showToast("Vui lòng nhập đủ tên và nội dung!", 'error');
+      }
+      
+      let key = `formulas_${currentClassCode}`; 
+      let formulas = JSON.parse(localStorage.getItem(key)) || initialClassFormulas;
+      
+      formulas.unshift({ 
+          id: Date.now(), 
+          subj: currentSubject, 
+          title: title, 
+          content: content, 
+          author: currentUser ? currentUser.name : 'Hệ thống' 
+      }); 
+      
+      localStorage.setItem(key, JSON.stringify(formulas));
+      
+      titleEl.value = ''; 
+      contentEl.value = ''; 
+      
+      renderInlineSubjectFormulas(); 
+      renderFormulaList();
+      playSound('success');
+      showToast("🎉 Đã thêm vào Kho dữ liệu chung!", 'success');
+    }
+
+    function renderInlineSubjectFormulas() {
+      let formulas = JSON.parse(localStorage.getItem(`formulas_${currentClassCode}`)) || initialClassFormulas;
+      let filtered = formulas.filter(f => f.subj === currentSubject); 
+      const container = document.getElementById('inlineSubjectFormulasList');
+      if(!container) return;
+      
+      container.innerHTML = filtered.length === 0 ? `<p style="color:var(--text-sub); font-size:0.75rem; text-align:center; padding:8px;">Chưa có dữ liệu nào cho môn ${currentSubject}.</p>` : filtered.map(f => {
+        let isImage = f.content.startsWith('data:image/');
+        let contentHtml = isImage ? `<img src="${f.content}" style="max-width:100%; border-radius:6px; margin-top:4px;" />` : `<div style="font-size:0.75rem; white-space:pre-wrap; line-height:1.4;">${f.content}</div>`;
+        return `
+          <div class="formula-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-weight:bold; font-size:0.8rem; color:var(--clock-color);">${f.title}</div>
+              ${(currentUser && currentUser.phone === ADMIN_PHONE) ? `<button style="background:none; border:none; color:#f87171; font-size:0.7rem;" onclick="deleteClassFormula(${f.id})">✖ Xóa</button>` : ''}
+            </div>
+            ${contentHtml}
+            <div style="font-size:0.65rem; color:var(--text-sub); margin-top:4px;">Người đăng: ${f.author || 'Hệ thống'}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function handleVanOutlineUpload(input) {
+      if(!input.files || !input.files[0]) return; const file = input.files[0]; const reader = new FileReader();
+      reader.onload = function(e) {
+        let key = `formulas_${currentClassCode}`; let formulas = JSON.parse(localStorage.getItem(key)) || initialClassFormulas;
+        let outlineContent = e.target.result;
+        if(file.type.startsWith('text/') || file.name.endsWith('.txt')) { try { outlineContent = decodeURIComponent(escape(atob(e.target.result.split(',')[1]))); } catch(err) {} }
+        formulas.push({ id: Date.now(), subj: 'Văn', title: `📄 Dàn Ý: ${file.name}`, content: outlineContent, author: currentUser.name });
+        localStorage.setItem(key, JSON.stringify(formulas)); input.value = ''; renderInlineSubjectFormulas(); playSound('success');
+        showToast(`🎉 Đã đăng thành công dàn ý "${file.name}"!`, 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function getDefaultChapters(subj) {
+      if(subj === 'Toán') return ['Chương 1: Hàm số', 'Chương 2: Hình học'];
+      if(subj === 'Lý') return ['Chương 1: Dao động', 'Chương 2: Sóng cơ'];
+      if(subj === 'Anh') return ['Unit 1', 'Unit 2'];
+      if(subj === 'Văn') return ['Chương 1: Thơ', 'Chương 2: Văn xuôi'];
+      if(subj === 'Cá Nhân') return ['⭐ Ghi chú cá nhân'];
+      return ['Chương 1'];
+    }
+
+    function getChapterStorageKey() { return currentSubject === 'Cá Nhân' ? `chapters_personal_${currentUser?currentUser.phone:'guest'}` : `chapters_${currentSubject}_${currentClassCode}`; }
+    function renderChapterDropdown() {
+      let chapters = JSON.parse(localStorage.getItem(getChapterStorageKey())) || getDefaultChapters(currentSubject);
+      const select = document.getElementById('chapterSelect'); if(select) select.innerHTML = chapters.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function openChapterModal() {
+      if(currentUser.phone !== ADMIN_PHONE) return showToast("❌ Chỉ Admin (0906292600) mới có quyền sửa chương!", 'error');
+      document.getElementById('chapModalSubjText').textContent = currentSubject; renderModalChapters(); document.getElementById('chapterModal').style.display = 'flex';
+    }
+
+    function renderModalChapters() {
+      let chapters = JSON.parse(localStorage.getItem(getChapterStorageKey())) || getDefaultChapters(currentSubject);
+      const select = document.getElementById('modalChapterSelect');
+      if(select) { select.innerHTML = chapters.map(c => `<option value="${c}">${c}</option>`).join(''); if(chapters.length > 0) document.getElementById('editChapterInput').value = chapters[0]; }
+    }
+    function handleModalChapterSelect(val) { document.getElementById('editChapterInput').value = val; }
+
+    function addNewChapter() {
+      const val = document.getElementById('newChapterInput').value.trim(); if(!val) return showToast("Vui lòng nhập tên chương!", 'error');
+      let key = getChapterStorageKey(); let chapters = JSON.parse(localStorage.getItem(key)) || getDefaultChapters(currentSubject);
+      chapters.push(val); localStorage.setItem(key, JSON.stringify(chapters)); document.getElementById('newChapterInput').value = ''; renderModalChapters(); renderChapterDropdown(); showToast("🎉 Thêm chương thành công!", 'success');
+    }
+
+    function saveEditedChapter() {
+      const oldVal = document.getElementById('modalChapterSelect').value; const newVal = document.getElementById('editChapterInput').value.trim();
+      if(!oldVal || !newVal) return; let key = getChapterStorageKey(); let chapters = JSON.parse(localStorage.getItem(key)) || getDefaultChapters(currentSubject);
+      let idx = chapters.indexOf(oldVal); if(idx !== -1) { chapters[idx] = newVal; localStorage.setItem(key, JSON.stringify(chapters)); renderModalChapters(); renderChapterDropdown(); showToast("🎉 Đã sửa tên chương!", 'success'); }
+    }
+
+    function deleteSelectedChapter() {
+      const val = document.getElementById('modalChapterSelect').value; if(!val) return;
+      let key = getChapterStorageKey(); let chapters = JSON.parse(localStorage.getItem(key)) || getDefaultChapters(currentSubject);
+      chapters = chapters.filter(c => c !== val); localStorage.setItem(key, JSON.stringify(chapters)); renderModalChapters(); renderChapterDropdown(); showToast("🗑️ Đã xóa chương!");
+    }
+
+    function openFormulaModal() { 
+      const filterSelect = document.getElementById('formulaSubjFilter');
+      if (filterSelect) {
+        if (['Toán', 'Lý', 'Anh', 'Văn'].includes(currentSubject)) {
+          filterSelect.value = currentSubject;
+        } else {
+          filterSelect.value = 'ALL';
+        }
+      }
+      renderFormulaList(); 
+      document.getElementById('formulaModal').style.display = 'flex'; 
+    }
+
+    function renderFormulaList() {
+      const filterSubj = document.getElementById('formulaSubjFilter').value; const searchKey = document.getElementById('formulaSearchInput').value.toLowerCase().trim();
+      let formulas = JSON.parse(localStorage.getItem(`formulas_${currentClassCode}`)) || initialClassFormulas;
+      let filtered = formulas.filter(f => (filterSubj === 'ALL' || f.subj === filterSubj) && (f.title.toLowerCase().includes(searchKey) || f.content.toLowerCase().includes(searchKey)));
+      const container = document.getElementById('classFormulasContainer');
+      container.innerHTML = filtered.length === 0 ? `<p style="color:var(--text-sub); text-align:center; padding:20px;">Không tìm thấy công thức/từ vựng nào.</p>` : filtered.map(f => `
+        <div class="formula-card"><div style="display:flex; justify-content:space-between;"><span class="badge-subj">${f.subj}</span>${currentUser.phone === ADMIN_PHONE ? `<button style="background:#e11d48; padding:2px 6px; font-size:0.65rem;" onclick="deleteClassFormula(${f.id})">Xóa</button>` : ''}</div><div style="font-weight:bold; font-size:0.85rem; color:var(--clock-color); margin-top:2px;">${f.title}</div><div style="font-size:0.75rem; white-space:pre-wrap; line-height:1.4;">${f.content}</div></div>
+      `).join('');
+    }
+
+    function addNewClassFormula() {
+      const subj = document.getElementById('newFormulaSubj').value; const title = document.getElementById('newFormulaTitle').value.trim(); const content = document.getElementById('newFormulaContent').value.trim();
+      if(!title || !content) return showToast("Nhập tiêu đề và nội dung!", 'error');
+      let key = `formulas_${currentClassCode}`; let formulas = JSON.parse(localStorage.getItem(key)) || initialClassFormulas;
+      formulas.push({ id: Date.now(), subj, title, content, author: currentUser.name }); localStorage.setItem(key, JSON.stringify(formulas));
+      document.getElementById('newFormulaTitle').value = ''; document.getElementById('newFormulaContent').value = ''; showToast("🎉 Đã thêm vào kho lớp!", 'success'); renderFormulaList(); renderInlineSubjectFormulas();
+    }
+
+    function deleteClassFormula(id) {
+      if(currentUser.phone !== ADMIN_PHONE) return showToast("❌ Chỉ Admin (0906292600) mới có quyền xóa dữ liệu này!", 'error');
+      let key = `formulas_${currentClassCode}`; let formulas = JSON.parse(localStorage.getItem(key) || '[]').filter(f => f.id !== id);
+      localStorage.setItem(key, JSON.stringify(formulas)); renderFormulaList(); renderInlineSubjectFormulas();
+    }
+
+    function postNotice() {
+      if(currentUser.phone !== ADMIN_PHONE) return showToast("❌ Chỉ Admin (0906292600) mới có quyền đăng bản tin!", 'error');
+      const titleInput = document.getElementById('noticeTitleInput'); const contentInput = document.getElementById('noticeContentInput');
+      const title = titleInput.value.trim(); const content = contentInput.value.trim(); if (!title || !content) return showToast('Nhập đủ thông tin!', 'error');
+      let notices = JSON.parse(localStorage.getItem(`notices_${currentClassCode}`) || '[]'); notices.unshift({ id: Date.now(), title, content, author: currentUser.name, time: new Date().toLocaleDateString('vi-VN') });
+      localStorage.setItem(`notices_${currentClassCode}`, JSON.stringify(notices)); titleInput.value = ''; contentInput.value = ''; renderNotices(); showToast("📢 Đã đăng thông báo thành công!", 'success'); titleInput.focus();
+    }
+
+    function renderNotices() {
+      let notices = JSON.parse(localStorage.getItem(`notices_${currentClassCode}`) || '[]'); const container = document.getElementById('noticeListContainer');
+      if (container) container.innerHTML = notices.length === 0 ? `<p style="color:var(--text-sub); text-align:center;">Chưa có thông báo.</p>` : notices.map(n => `
+        <div style="background:rgba(0,0,0,0.06); border-radius:8px; padding:6px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:flex-start; gap:6px;"><div style="min-width:0; flex:1;"><strong style="color:var(--clock-color); font-size:0.75rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n.title}</strong><div style="font-size:0.75rem;">${n.content}</div></div>${currentUser.phone === ADMIN_PHONE ? `<button style="background:#e11d48; padding:2px 6px; font-size:0.65rem; flex-shrink:0;" onclick="deleteNotice(${n.id})">Xóa</button>` : ''}</div>
+      `).join('');
+    }
+
+    function deleteNotice(id) {
+      if(currentUser.phone !== ADMIN_PHONE) return showToast("❌ Chỉ Admin (0906292600) mới có quyền xóa bản tin!", 'error');
+      let key = `notices_${currentClassCode}`; let notices = JSON.parse(localStorage.getItem(key) || '[]').filter(n => n.id !== id); localStorage.setItem(key, JSON.stringify(notices)); renderNotices();
+    }
+
+    function addQuickReminder(type) {
+      let title = type === 'homework' ? "📝 Hoàn thành Bài Tập Về Nhà Tối Nay" : "🚨 Lịch Thi Quan Trọng Ngày Mai";
+      let date = new Date().toISOString().split('T')[0]; let key = `reminders_${currentClassCode}`; let reminders = JSON.parse(localStorage.getItem(key) || '[]');
+      reminders.unshift({ id: Date.now(), title, date }); 
+      localStorage.setItem(key, JSON.stringify(reminders)); 
+      if (firebaseDb) firebaseDb.ref(`reminders_${currentClassCode}`).set(reminders);
+      renderClassReminders(); showToast("🔔 Đã tạo nhanh nhắc nhở!", 'success');
+    }
+
+    function addDeadline() {
+      const titleInput = document.getElementById('dlTitle'); const dateInput = document.getElementById('dlDate');
+      const title = titleInput.value.trim(); const date = dateInput.value; if (!title || !date) return showToast('Nhập đủ thông tin!', 'error');
+      let key = `reminders_${currentClassCode}`; let reminders = JSON.parse(localStorage.getItem(key) || '[]'); reminders.unshift({ id: Date.now(), title, date });
+      localStorage.setItem(key, JSON.stringify(reminders)); 
+      if (firebaseDb) firebaseDb.ref(`reminders_${currentClassCode}`).set(reminders);
+      titleInput.value = ''; dateInput.value = ''; document.getElementById('deadlineModal').style.display = 'none'; renderClassReminders(); showToast("📅 Đã lưu nhắc nhở!", 'success');
+    }
+
+    function renderClassReminders() {
+      let reminders = JSON.parse(localStorage.getItem(`reminders_${currentClassCode}`) || '[]'); const container = document.getElementById('classStudyRemindersList');
+      if (!container) return;
+      container.innerHTML = reminders.length === 0 ? `<p style="color:var(--text-sub); text-align:center;">Chưa có nhắc nhở.</p>` : reminders.map(r => `
+        <div style="background:rgba(244, 63, 94, 0.08); border-radius:6px; padding:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; gap:6px;"><div style="min-width:0; flex:1;"><strong style="color:#f43f5e; font-size:0.75rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.title}</strong><div style="font-size:0.65rem; color:var(--text-sub);">Hạn: ${r.date}</div></div>${currentUser.phone === ADMIN_PHONE ? `<button style="background:#e11d48; padding:2px 6px; font-size:0.7rem; flex-shrink:0;" onclick="deleteReminder(${r.id})">Xóa</button>` : ''}</div>
+      `).join('');
+    }
+
+    function deleteReminder(id) {
+      if(currentUser.phone !== ADMIN_PHONE) return showToast("❌ Chỉ Admin (0906292600) mới có quyền xóa!", 'error');
+      let key = `reminders_${currentClassCode}`; let reminders = JSON.parse(localStorage.getItem(key) || '[]').filter(r => r.id !== id); 
+      localStorage.setItem(key, JSON.stringify(reminders)); 
+      if (firebaseDb) firebaseDb.ref(`reminders_${currentClassCode}`).set(reminders);
+      renderClassReminders();
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chatInput'); const text = input.value.trim(); if(!text) return;
+      let msgs = JSON.parse(localStorage.getItem(`chat_${currentClassCode}`) || '[]');
+      let newMsg = { id: Date.now(), author: currentUser.name, phone: currentUser.phone, text, type: 'text', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+      msgs.push(newMsg);
+      localStorage.setItem(`chat_${currentClassCode}`, JSON.stringify(msgs));
+      if (firebaseDb) firebaseDb.ref(`chat_${currentClassCode}`).set(msgs);
+      input.value = ''; renderChat();
+
+      if(text.toLowerCase().includes('@ai') || text.toLowerCase().includes('hỏi ai')) {
+        let loadingId = Date.now() + 1;
+        msgs.push({ id: loadingId, author: '🤖 AI Trợ Lý', phone: 'ai_bot', text: '🤖 AI đang xử lý siêu tốc...', type: 'text', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
+        localStorage.setItem(`chat_${currentClassCode}`, JSON.stringify(msgs)); renderChat();
+
+        let aiReply = await processAIQueryAsync(text);
+        msgs = JSON.parse(localStorage.getItem(`chat_${currentClassCode}`) || '[]');
+        let idx = msgs.findIndex(m => m.id === loadingId);
+        if (idx !== -1) msgs[idx].text = aiReply;
+        localStorage.setItem(`chat_${currentClassCode}`, JSON.stringify(msgs)); 
+        if (firebaseDb) firebaseDb.ref(`chat_${currentClassCode}`).set(msgs);
+        renderChat();
+      }
+    }
+
+    function renderChat() {
+      const msgs = JSON.parse(localStorage.getItem(`chat_${currentClassCode}`) || '[]'); const box = document.getElementById('chatMessages');
+      if(!box) return;
+      box.innerHTML = msgs.map(m => {
+        let contentHtml = m.type === 'image' ? `<img src="${m.fileData}" style="max-width:200px; border-radius:6px; margin-top:4px;" />` : (m.type === 'file' ? `<a href="${m.fileData}" download="${m.fileName}" style="color:var(--clock-color); font-weight:bold;">📄 ${m.fileName}</a>` : `<div>${m.text || ''}</div>`);
+        return `<div class="chat-msg ${m.phone===currentUser.phone?'me':'other'}"><div class="chat-content-wrap"><span class="chat-info">${m.author} - ${m.time}</span><div class="chat-bubble">${contentHtml}</div></div></div>`;
+      }).join('');
+      setTimeout(() => { box.scrollTop = box.scrollHeight; }, 50);
+    }
+
+    function switchTab(tId, btn) {
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.g-tab, .m-tab').forEach(t => t.classList.remove('active'));
+      const pane = document.getElementById(`pane-${tId}`); if(pane) pane.classList.add('active');
+      document.querySelectorAll(`.g-tab, .m-tab`).forEach(el => { if(el.getAttribute('onclick')?.includes(`'${tId}'`)) el.classList.add('active'); });
+      if(tId === 'study') { renderInlineSubjectFormulas(); } else if(tId === 'chat') renderChat();
+    }
+
+    function toggleAuthMode() { isLoginMode = !isLoginMode; document.getElementById('registerFields').style.display = isLoginMode ? 'none' : 'block'; document.getElementById('mainAuthBtn').textContent = isLoginMode ? 'ĐĂNG NHẬP' : 'ĐĂNG KÝ MỚI'; }
+    function processAuth() {
+      const phone = document.getElementById('loginPhone').value.trim(); const pass = document.getElementById('loginPass').value.trim(); const remember = document.getElementById('rememberMe').checked;
+      if(!phone || !pass) return showToast("Nhập đủ SĐT và Mật khẩu!", 'error');
+      let db = JSON.parse(localStorage.getItem('app_users_db') || '{}');
+      if(!isLoginMode) {
+        const name = document.getElementById('loginName').value.trim(); if(!name) return showToast("Nhập Họ tên!", 'error'); if(db[phone]) return showToast("SĐT này đã đăng ký!", 'error');
+        db[phone] = { phone, name, pass }; localStorage.setItem('app_users_db', JSON.stringify(db)); currentUser = db[phone];
+      } else {
+        if(!db[phone] || db[phone].pass !== pass) return showToast("Sai SĐT hoặc mật khẩu!", 'error'); currentUser = db[phone];
+      }
+      if(remember) localStorage.setItem('app_user_remembered', JSON.stringify(currentUser)); else sessionStorage.setItem('app_user_session', JSON.stringify(currentUser));
+      document.getElementById('loginScreen').style.display = 'none'; document.getElementById('mainWorkspace').style.display = 'flex';
+      renderTimetableImage(); renderNotices(); renderClassReminders(); renderChapterDropdown(); renderInlineSubjectFormulas(); renderChat(); renderMainDocumentList(); updateUserOnlineStatus(); updateStreakCount();
+    }
+
+    function logoutUser() { localStorage.removeItem('app_user_remembered'); sessionStorage.removeItem('app_user_session'); currentUser = null; document.getElementById('profileModal').style.display = 'none'; document.getElementById('mainWorkspace').style.display = 'none'; document.getElementById('loginScreen').style.display = 'flex'; }
+    function openAiModal() { document.getElementById('aiModal').style.display = 'flex'; }
+    function openSettingsAndProfile() {
+      let isAdmin = currentUser.phone === ADMIN_PHONE;
+      document.getElementById('profileName').textContent = currentUser.name; document.getElementById('profilePhone').textContent = currentUser.phone;
+      document.getElementById('profileRole').textContent = isAdmin ? 'Quản trị viên (Admin)' : 'Thành viên nhóm'; document.getElementById('settingClassCodeInput').value = currentClassCode;
+      document.getElementById('geminiApiKeyInput').value = localStorage.getItem('gemini_api_key') || DEFAULT_GEMINI_KEY;
+      document.getElementById('firebaseDbUrlInput').value = localStorage.getItem('firebase_db_url') || DEFAULT_FIREBASE_URL;
+      document.getElementById('profileModal').style.display = 'flex';
+    }
+
+    function saveSettingClassCode() {
+      let newCode = document.getElementById('settingClassCodeInput').value.trim().toUpperCase(); if(!newCode) return; currentClassCode = newCode;
+      localStorage.setItem('saved_class_code', currentClassCode); document.getElementById('classCodeInput').value = currentClassCode; document.querySelectorAll('.activeClassSpan').forEach(el => el.textContent = currentClassCode); document.getElementById('headerClassCode').textContent = currentClassCode;
+      renderTimetableImage(); renderNotices(); renderClassReminders(); renderChapterDropdown(); renderInlineSubjectFormulas(); renderChat(); renderMainDocumentList(); updateUserOnlineStatus();
+      if (firebaseDb) { listenFirebaseChat(); listenFirebaseReminders(); listenFirebaseTimetable(); listenFirebaseConfig(); }
+      showToast("🎉 Đã đổi mã nhóm thành công!", 'success'); document.getElementById('profileModal').style.display = 'none';
+    }
+
+    function updateClassCode(val) { currentClassCode = val.trim().toUpperCase() || '11A8'; renderTimetableImage(); renderNotices(); renderClassReminders(); renderInlineSubjectFormulas(); renderMainDocumentList(); if (firebaseDb) { listenFirebaseChat(); listenFirebaseReminders(); listenFirebaseTimetable(); listenFirebaseConfig(); } }
+    function openDeadlineModal() { document.getElementById('deadlineModal').style.display='flex'; }
+    
+    async function toggleRecordVoiceMsg() { const btn = document.getElementById('btnRecordVoiceMsg'); const status = document.getElementById('voiceRecordingStatus'); if (!isRecordingVoiceMsg) { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); mediaRecorderMsg = new MediaRecorder(stream); audioChunksMsg = []; mediaRecorderMsg.ondataavailable = e => audioChunksMsg.push(e.data); mediaRecorderMsg.onstop = () => { const blob = new Blob(audioChunksMsg, { type: 'audio/webm' }); const reader = new FileReader(); reader.onloadend = () => { let msgs = JSON.parse(localStorage.getItem(`chat_${currentClassCode}`) || '[]'); let newMsg = { id: Date.now(), author: currentUser.name, phone: currentUser.phone, type: 'voice', audioData: reader.result, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }; msgs.push(newMsg); localStorage.setItem(`chat_${currentClassCode}`, JSON.stringify(msgs)); if (firebaseDb) firebaseDb.ref(`chat_${currentClassCode}`).set(msgs); renderChat(); }; reader.readAsDataURL(blob); }; mediaRecorderMsg.start(); isRecordingVoiceMsg = true; btn.style.background = '#e11d48'; btn.textContent = '⏹️ Gửi Voice'; status.style.display = 'inline'; } catch(err) { showToast('Không thể truy cập Micro!', 'error'); } } else { if (mediaRecorderMsg && mediaRecorderMsg.state !== 'inactive') mediaRecorderMsg.stop(); isRecordingVoiceMsg = false; btn.style.background = '#0284c7'; btn.textContent = '🎙️ Voice'; status.style.display = 'none'; } }
+  </script>
+</body>
+</html>
