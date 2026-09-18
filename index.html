@@ -717,7 +717,7 @@
         <h4 style="font-size:0.8rem; color:#a855f7; margin-bottom:4px;">🔑 Cấu Hình AI Gemini Thông Minh (Tự động đồng bộ cho toàn nhóm)</h4>
         <p style="font-size:0.68rem; color:var(--text-sub); margin-bottom:6px;">Lấy Key từ <a href="https://aistudio.google.com" target="_blank" style="color:#38bdf8; text-decoration:underline;">aistudio.google.com</a> và dán vào đây (Chỉ cần 1 máy lưu, mọi máy khác trong nhóm tự nhận):</p>
         <div style="display:flex; gap:6px;">
-          <input type="password" id="geminiApiKeyInput" placeholder="Dán Gemini API Key..." style="flex:1; padding:6px; font-size:0.75rem;" />
+          <input type="password" id="geminiApiKeyInput" placeholder="Dán Gemini API Key (bắt đầu bằng AIzaSy...) vào đây..." style="flex:1; padding:6px; font-size:0.75rem;" />
           <button class="btn-primary" style="background:#a855f7; padding:6px 12px; font-size:0.75rem;" onclick="saveGeminiApiKey()">Lưu & Đồng Bộ Key</button>
         </div>
       </div>
@@ -849,17 +849,6 @@
     let selectedMatchTitle = null;
     let selectedMatchContent = null;
     let selectedScrambleWords = [];
-
-    // TÍCH HỢP SẴN MẶC ĐỊNH FIREBASE VÀ AI KEY CHO NGƯỜI DÙNG
-    const DEFAULT_FIREBASE_URL = 'https://app-hoc-tap-ee828-default-rtdb.asia-southeast1.firebasedatabase.app/';
-    const DEFAULT_GEMINI_KEY =
-
-    if (!localStorage.getItem('firebase_db_url')) {
-      localStorage.setItem('firebase_db_url', DEFAULT_FIREBASE_URL);
-    }
-    if (!localStorage.getItem('gemini_api_key')) {
-      localStorage.setItem('gemini_api_key', DEFAULT_GEMINI_KEY);
-    }
 
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -995,9 +984,9 @@
       window.addEventListener('resize', renderTimetableImage);
     });
 
-    /* LẮNG NGHE & ĐỒNG BỘ REALTIME FIREBASE */
+    /* LẮNG NGHE & ĐỒNG BỘ REALTIME FIREBASE (Bao gồm Key AI) */
     function initFirebaseIfConfigured() {
-      let url = localStorage.getItem('firebase_db_url') || DEFAULT_FIREBASE_URL;
+      let url = localStorage.getItem('firebase_db_url');
       if (url && typeof firebase !== 'undefined') {
         try {
           if (!firebase.apps.length) {
@@ -1013,7 +1002,8 @@
     }
 
     function saveFirebaseConfig() {
-      let url = document.getElementById('firebaseDbUrlInput').value.trim() || DEFAULT_FIREBASE_URL;
+      let url = document.getElementById('firebaseDbUrlInput').value.trim();
+      if (!url) return showToast("Vui lòng nhập Firebase Database URL!", "error");
       localStorage.setItem('firebase_db_url', url);
       initFirebaseIfConfigured();
       showToast("🎉 Đã lưu cấu hình Firebase đồng bộ thành công!", "success");
@@ -1066,8 +1056,12 @@
       });
     }
 
+    /* ĐỒNG BỘ GEMINI API KEY LÊN FIREBASE ĐỂ CẢ NHÓM DÙNG CHUNG */
     function saveGeminiApiKey() {
-      const key = document.getElementById('geminiApiKeyInput').value.trim() || DEFAULT_GEMINI_KEY;
+      const key = document.getElementById('geminiApiKeyInput').value.trim();
+      if (!key) {
+        return showToast("Vui lòng nhập Gemini API Key!", "error");
+      }
       localStorage.setItem('gemini_api_key', key);
       if (firebaseDb) {
         firebaseDb.ref(`config_${currentClassCode}`).set({ geminiApiKey: key });
@@ -1075,6 +1069,7 @@
       showToast("🎉 Đã lưu và đồng bộ Key AI cho toàn bộ nhóm thành công!", "success");
     }
 
+    /* XỬ LÝ ẢNH THỜI KHÓA BIỂU PHÂN TÁCH 9:16 (MOBILE) & 16:9 (DESKTOP) */
     function renderTimetableImage() {
       const rawData = localStorage.getItem(`timetable_${currentClassCode}`);
       const container = document.getElementById('timetableDisplayArea');
@@ -1183,7 +1178,14 @@
     }
 
     async function callGeminiAPI(promptText, base64Image = null) {
-      let apiKey = (localStorage.getItem('gemini_api_key') || DEFAULT_GEMINI_KEY).trim();
+      let apiKey = (localStorage.getItem('gemini_api_key') || '').trim();
+      
+      if (!apiKey) {
+        return { 
+          success: false, 
+          error: '🔑 Chưa có API Key!\n\nHãy nhờ Admin dán Key vào mục 👤 Cài đặt trên 1 máy bất kỳ, hệ thống sẽ tự động đồng bộ cho tất cả các máy còn lại!' 
+        };
+      }
 
       const systemInstruction = {
         parts: [{
@@ -1230,13 +1232,19 @@ QUY TẮC BẮT BUỘC:
 
         if (data.error) {
           let errMessage = data.error.message || `Lỗi HTTP ${response.status}`;
+          if (data.error.code === 400 && errMessage.toLowerCase().includes('api key')) {
+            return {
+              success: false,
+              error: '🔑 API Key không hợp lệ!\n\nVui lòng kiểm tra lại Key trong phần Cài đặt.'
+            };
+          }
           return { success: false, error: `❌ Lỗi máy chủ AI: ${errMessage}` };
         }
       } catch (err) {
         return { success: false, error: `❌ Lỗi kết nối: ${err.message}` };
       }
 
-      return { success: false, error: '❌ Không thể kết nối tới AI. Vui lòng kiểm tra lại Key!' };
+      return { success: false, error: '❌ Không thể kết nối tới AI. Vui lòng thử lại sau!' };
     }
 
     async function processAIQueryAsync(rawQuery, base64Image = null) {
@@ -2380,8 +2388,8 @@ QUY TẮC BẮT BUỘC:
       let isAdmin = currentUser.phone === ADMIN_PHONE;
       document.getElementById('profileName').textContent = currentUser.name; document.getElementById('profilePhone').textContent = currentUser.phone;
       document.getElementById('profileRole').textContent = isAdmin ? 'Quản trị viên (Admin)' : 'Thành viên nhóm'; document.getElementById('settingClassCodeInput').value = currentClassCode;
-      document.getElementById('geminiApiKeyInput').value = localStorage.getItem('gemini_api_key') || DEFAULT_GEMINI_KEY;
-      document.getElementById('firebaseDbUrlInput').value = localStorage.getItem('firebase_db_url') || DEFAULT_FIREBASE_URL;
+      document.getElementById('geminiApiKeyInput').value = localStorage.getItem('gemini_api_key') || '';
+      document.getElementById('firebaseDbUrlInput').value = localStorage.getItem('firebase_db_url') || '';
       document.getElementById('profileModal').style.display = 'flex';
     }
 
